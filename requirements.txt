@@ -4,4 +4,8 @@ scikit-learn>=1.9
 python-dotenv>=1.0
 google-genai>=3.1
 groq>=1.7
-# Phase 3 will add: streamlit, weasyprint, jinja2, plotly, kaleido
+streamlit>=1.67
+xhtml2pdf>=0.2.20
+jinja2>=3.1
+plotly>=7.1
+kaleido>=1.5

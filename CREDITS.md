@@ -11,20 +11,31 @@ Last updated: 2026-11-11 (Phases 1–3).
 | **pandas** 3.0.3 | BSD-3-Clause | DataFrames; all table manipulation | Core dependency |
 | **DuckDB** 2.0.0 | MIT | Zero-copy SQL over `.csv.gz`; column selection on load | Core dependency |
 | **scikit-learn** 1.9.0 | BSD-3-Clause | `NearestNeighbors` for comp selection; `StandardScaler` | Core dependency |
-| **Streamlit** (Phase 3) | Apache-2.0 | App shell: listings input, comps view, PDF download | Approved in Phase 0 |
-| **WeasyPrint** (Phase 3) | BSD-3-Clause | HTML+CSS → one-page PDF | Approved in Phase 0 |
-| **Jinja2** (Phase 3) | BSD-3-Clause | The report HTML template | Approved in Phase 0 |
-| **plotly** + **kaleido** (Phase 3) | MIT / MIT | Comp chart rendered to PNG for the PDF | Approved in Phase 0 |
-| **geopy** (if used) | MIT | Distance/geo utilities | Optional |
-| **python-dotenv** (Phase 2) | BSD-family | Load `.env` secrets | Approved in Phase 0 |
-| **google-genai** (Phase 2) | Apache-2.0 | Gemini free tier for audit summary | Approved in Phase 0 |
-| **groq** (Phase 2) | Apache-2.0 | Groq free tier for audit summary | Approved in Phase 0 |
+| **Streamlit** 1.x | Apache-2.0 | App shell: sidebar, tabs, `st.download_button` for the PDF | Phase 3 |
+| **xhtml2pdf** 0.2.x | Apache-2.0 | HTML+CSS → one-page PDF (**promoted from fallback**) | Phase 3. See note below |
+| **Jinja2** 3.x | BSD-3-Clause | The report HTML template | Phase 3 |
+| **plotly** + **kaleido** | MIT / MIT | Chart rendered to PNG → base64 → embedded in the PDF | Chart is decoration; PDF renders without it |
+| **python-dotenv** | BSD-family | Load `.env` secrets | Phase 2 |
+| **google-genai** | Apache-2.0 | Gemini free tier for audit summary | Phase 2 |
+| **groq** | Apache-2.0 | Groq free tier for audit summary | Phase 2 |
+| **DejaVu fonts** (bundled in `assets/fonts/`) | Bitstream Vera (permissive, notice retained) | Typeface embedded in the PDF | See `assets/fonts/README.txt` |
+
+**PDF engine note:** WeasyPrint (approved in Phase 0) cannot run on this Windows
+machine — it needs GTK/Pango system libraries and no package manager here provides
+them. We fell back to **xhtml2pdf**, the pre-approved fallback option. The design
+(`templates/audit_report.html`) is deliberately table-based CSS so it ports back to
+WeasyPrint unchanged on Linux/macOS. Both engines are reused, not copied.
 
 ## Reused (pattern, not code)
 
 | Project | License | What we took |
 |---|---|---|
 | **streamlit/example-app-pdf-report** | Apache-2.0 | The pattern: Streamlit app → generate PDF → `st.download_button`. No code copied; rewritten for this product. |
+
+## Dev-only tools (not shipped)
+
+`pytest` (tests), `pypdf` + `pypdfium2` (PDF text/raster checks during development),
+`matplotlib` (one-off: source of the DejaVu TTFs bundled in `assets/fonts/`).
 
 ## Data
 
@@ -36,7 +47,7 @@ Last updated: 2026-11-11 (Phases 1–3).
 
 | Project | Problem | Decision |
 |---|---|---|
-| `Kozea/WeasyPrint` | none — fine, see above | Reused (Phase 3) |
+| `Kozea/WeasyPrint` | BSD-3, but requires GTK/Pango **system** libraries absent on this Windows machine | **Not usable here**; xhtml2pdf (pre-approved fallback) used instead. Kept as the future Linux/macOS option — template is written to port cleanly. |
 | **fpdf2** | LGPL-3.0-only | **Excluded** by license rule |
 | **xhtml2pdf** | OK (Apache-2.0) but weaker CSS | Kept as fallback only, not a dependency yet |
 | **python-pdfkit + wkhtmltopdf** | Wrapper MIT, but wkhtmltopdf is LGPL and unmaintained | **Excluded** |

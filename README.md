@@ -12,7 +12,7 @@ Every revenue number in the report is labelled **ESTIMATE** with the calculation
 - [x] Phase 0 — Research & reuse plan (approved 2026-11-11)
 - [x] Phase 1 — Pipeline: load one metro, build a comps table for a single listing
 - [x] Phase 2 — Audit signals + revenue-gap estimate + LLM summary (Gemini/Groq free tier, offline fallback)
-- [ ] Phase 3 — One-page PDF (WeasyPrint) + Streamlit upload/enter page
+- [x] Phase 3 — One-page PDF (xhtml2pdf) + Streamlit app (look up / enter / upload a listing, download PDF)
 
 ## Data source & attribution
 
@@ -78,6 +78,32 @@ from the audit dict — no invented numbers, works offline. Prompt lives in
 `str_audit/audit_prompt.py`; every call is wrapped so any API failure degrades
 to the fallback instead of crashing.
 
+## Phase 3 — one-page PDF + Streamlit app
+
+```bash
+# generate the PDF from the CLI (no Streamlit needed)
+python -m str_audit.report --listing-id 21004527
+#   -> outputs/audit_21004527.pdf
+
+# run the app (upload / enter / look up a listing, download the PDF)
+streamlit run app.py
+```
+
+The app has three entry points: **Inside Airbnb listing** (by id, e.g. the curated
+`21004527`), **Enter manually** (feeds the photo-count signal — public data has none),
+and **Upload CSV/JSON** (same fields as the manual form; sample template downloadable in-app).
+
+### Branding
+The PDF header and app title say **"STR Revenue Audit"** — rename in
+`templates/audit_report.html` (`.band-title`), `app.py` (`st.set_page_config`, `st.title`),
+and `.streamlit/config.toml`. PDF colours: `#10483c` green, `#d97706` amber, `#f4f1ea` bone.
+
+### PDF engine note
+WeasyPrint (Phase 0 pick) needs GTK/Pango system libraries this Windows machine lacks —
+no winget/package manager available either. **xhtml2pdf** (pre-approved fallback, Apache-2.0)
+is used instead; the Jinja2 template is table-based CSS written to port back to WeasyPrint
+on Linux/macOS unchanged. See `CREDITS.md`.
+
 ## File map (every file, and why it exists)
 
 | File | Why it exists |
@@ -88,6 +114,12 @@ to the fallback instead of crashing.
 | `.env.example` | Template for Phase 2 LLM keys (Gemini/Groq). Real values live in `.env`, never committed. |
 | `requirements.txt` | Minimal pinned-ish deps. Phase 1: pandas, duckdb, scikit-learn. |
 | `scripts/download_data.py` | Fetches the Austin 2026-09-17 Inside Airbnb files into `data/` (idempotent, stdlib only). |
+| `app.py` | Streamlit app — three ways in (look up / enter / upload), audit view, PDF download button. |
+| `templates/audit_report.html` | The one-page PDF: Jinja2 + table CSS (xhtml2pdf-safe). All ESTIMATE labels, method and attribution render from data; branding is here (`.band-title`). |
+| `str_audit/report.py` | Audit dict → styled HTML → PDF bytes. Owns the Plotly→kaleido chart (PNG base64; silently omitted if kaleido can't run) and the Jinja view model. |
+| `assets/fonts/` | DejaVu TTFs embedded in the PDF (Bitstream Vera license — see `assets/fonts/README.txt`). |
+| `.streamlit/config.toml` | App theme: deep green primary, warm off-white background, no usage stats. |
+| `requirements-dev.txt` | Dev tools only: pytest, pypdf, pypdfium2. |
 | `str_audit/__init__.py` | Package marker + version. |
 | `str_audit/data.py` | Loads `listings.csv.gz`, normalises the messy fields (`$1,234` → float, `bathrooms_text` → number, t/f → bool). All Inside Airbnb weirdness is handled here, once. |
 | `str_audit/comps.py` | Builds the comps table for one listing: same room type, bed-band, neighbourhood (falls back to radius), then k-nearest on scaled [price, beds, bedrooms, baths]. |
