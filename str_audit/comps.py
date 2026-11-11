@@ -106,7 +106,8 @@ def build_comps(df: pd.DataFrame, listing_id: int, k: int = 12,
     comps.insert(0, "rank", range(1, n + 1))
     out_cols = ["rank", "distance", "id", "name", "neighbourhood_cleansed",
                 "room_type", "bedrooms", "beds", "baths", "price",
-                "availability_365", "number_of_reviews", "reviews_per_month",
+                "availability_365", "estimated_occupancy_l365d",
+                "number_of_reviews", "reviews_per_month",
                 "last_review", "estimated_revenue_l365d"]
     return comps[out_cols].reset_index(drop=True), how
 
