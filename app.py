@@ -95,7 +95,7 @@ def show_audit(audit: dict):
              "price", "availability_365", "number_of_reviews", "estimated_revenue_l365d"]]
         comps_df.columns = ["#", "Neighbourhood", "Room type", "Beds", "Baths",
                              "Price", "Avail 365d", "Reviews", "Est. rev (ESTIMATE)"]
-        st.dataframe(comps_df, use_container_width=True, hide_index=True)
+        st.dataframe(comps_df, width="stretch", hide_index=True)
 
     with st.expander("How we calculated it (method & caveats)"):
         for line in audit["estimate"]["method"]:
