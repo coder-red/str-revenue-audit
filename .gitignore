@@ -3,8 +3,10 @@
 .env.*
 !.env.example
 
-# Data (Inside Airbnb downloads) — public CC BY 4.0 data, too big for git
+# Data (Inside Airbnb downloads) — public CC BY 4.0 data, too big for git.
+# Exception: the 7 MB listings file IS committed so hosted deploys work out of the box.
 data/
+!data/austin-2026-09-17/listings.csv.gz
 
 # Generated reports / comps outputs
 outputs/*
