@@ -16,8 +16,11 @@ import io
 import json
 import os
 
+from dotenv import load_dotenv
 import pandas as pd
 import streamlit as st
+
+load_dotenv()  # sidebar reads os.environ for the LLM key status; llm.py loads it lazily otherwise
 
 from str_audit.audit import run_audit, run_audit_custom
 from str_audit.comps import DEFAULT_DATA
