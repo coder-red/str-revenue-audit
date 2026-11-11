@@ -7,6 +7,16 @@ Audience: non-technical property managers. **The PDF is the product.**
 
 Every revenue number in the report is labelled **ESTIMATE** with the calculation shown.
 
+## What it looks like
+
+| Streamlit app | PDF one-pager |
+|---|---|
+| ![App](docs/screenshot-app.png) | ![PDF](docs/screenshot-pdf.png) |
+
+Sample output for a real (underperforming) Austin listing: **[docs/sample_audit_21004527.pdf](docs/sample_audit_21004527.pdf)**
+— 1BR condo, "78741", last review 2020, $0 modelled annual revenue vs $16,959 comp median.
+The tool's job: show a property manager the gap and the top fixes, honestly labelled as estimates.
+
 ## Status
 
 - [x] Phase 0 — Research & reuse plan (approved 2026-11-11)
