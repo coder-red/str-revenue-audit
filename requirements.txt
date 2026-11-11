@@ -1,5 +1,7 @@
 pandas>=3.0
 duckdb>=2.0
 scikit-learn>=1.9
-# Phase 2 will add: python-dotenv, google-genai, groq
+python-dotenv>=1.0
+google-genai>=3.1
+groq>=1.7
 # Phase 3 will add: streamlit, weasyprint, jinja2, plotly, kaleido

@@ -11,7 +11,7 @@ Every revenue number in the report is labelled **ESTIMATE** with the calculation
 
 - [x] Phase 0 — Research & reuse plan (approved 2026-11-11)
 - [x] Phase 1 — Pipeline: load one metro, build a comps table for a single listing
-- [ ] Phase 2 — Audit signals + revenue-gap estimate + LLM summary (Gemini/Groq free tier)
+- [x] Phase 2 — Audit signals + revenue-gap estimate + LLM summary (Gemini/Groq free tier, offline fallback)
 - [ ] Phase 3 — One-page PDF (WeasyPrint) + Streamlit upload/enter page
 
 ## Data source & attribution
@@ -48,6 +48,36 @@ python -m str_audit.comps --demo
 
 `str_audit.comps` prints the table to stdout and writes `outputs/comps.csv`.
 
+## Phase 2 — audit + revenue gap + summary
+
+```bash
+python -m str_audit.audit --listing-id 21004527   # full audit, prints report + writes outputs/audit_<id>.json
+```
+
+Signals (all our own logic, thresholds in `str_audit/signals.py`):
+weak photos (user-entered count only; public data has none → reported `unknown`),
+thin description (<60 words), review recency (stale after 180 days; 0 reviews = fail),
+price vs comp median (>10% off = flag).
+
+Revenue numbers — **both are ESTIMATES with formulas printed**:
+- **A, price positioning:** `(comp_median_price − target_price) × comp_avg_occupancy × 365`
+- **B, Inside Airbnb model:** `median(comp estimated_revenue_l365d, active comps only) − target's`
+
+### LLM summary (optional — works without keys)
+
+The summary runs through Gemini or Groq free tier, selected at runtime:
+
+```bash
+cp .env.example .env      # Windows: copy .env.example .env
+# edit .env: GEMINI_API_KEY=...  or  GROQ_API_KEY=...  and LLM_PROVIDER=gemini|groq
+python -m str_audit.audit --listing-id 21004527 --provider gemini
+```
+
+With no keys (or `--provider none`), a deterministic fallback summary is produced
+from the audit dict — no invented numbers, works offline. Prompt lives in
+`str_audit/audit_prompt.py`; every call is wrapped so any API failure degrades
+to the fallback instead of crashing.
+
 ## File map (every file, and why it exists)
 
 | File | Why it exists |
@@ -61,7 +91,12 @@ python -m str_audit.comps --demo
 | `str_audit/__init__.py` | Package marker + version. |
 | `str_audit/data.py` | Loads `listings.csv.gz`, normalises the messy fields (`$1,234` → float, `bathrooms_text` → number, t/f → bool). All Inside Airbnb weirdness is handled here, once. |
 | `str_audit/comps.py` | Builds the comps table for one listing: same room type, bed-band, neighbourhood (falls back to radius), then k-nearest on scaled [price, beds, bedrooms, baths]. |
-| `tests/test_comps.py` | Smoke tests on a tiny synthetic DataFrame — no network needed. |
+| `str_audit/signals.py` | Our audit logic: photo/description/review-recency/price-vs-comps signals with thresholds as named constants; ranks top fixes by severity. |
+| `str_audit/revenue.py` | The two ESTIMATE figures (price-positioning gap; Inside Airbnb model gap over active comps) with formulas and caveats returned alongside. |
+| `str_audit/audit_prompt.py` | The audit-summary prompt — ours. Non-technical tone, no invented numbers, ESTIMATE language baked in. |
+| `str_audit/llm.py` | Thin Gemini/Groq wrapper (free tiers, keys from `.env`). Any failure degrades to a deterministic plain-text fallback built from the same audit dict. |
+| `str_audit/audit.py` | Phase 2 orchestrator: listing → comps → signals → estimate → summary; prints the report and writes `outputs/audit_<id>.json`. (Phase 3 renders the same dict to PDF.) |
+| `tests/` | pytest smoke tests on synthetic data — no network. `python -m pytest tests/ -v` |
 | `outputs/` | Generated artefacts (gitignored). |
 
 ## License
