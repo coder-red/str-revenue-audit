@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>STR Revenue Audit — {{ view.listing_name }}</title>
+<style>
+@page { size: letter; margin: 0.42in 0.45in 0.42in 0.45in; }
+
+@font-face { font-family: DejaVuSerif; src: url(file:///{{ assets }}/DejaVuSerif.ttf); }
+@font-face { font-family: DejaVuSerifBold; src: url(file:///{{ assets }}/DejaVuSerif-Bold.ttf); }
+@font-face { font-family: DejaVuSerifItalic; src: url(file:///{{ assets }}/DejaVuSerif-Italic.ttf); }
+@font-face { font-family: DejaVuSans; src: url(file:///{{ assets }}/DejaVuSans.ttf); }
+@font-face { font-family: DejaVuSansBold; src: url(file:///{{ assets }}/DejaVuSans-Bold.ttf); }
+@font-face { font-family: DejaVuSansOblique; src: url(file:///{{ assets }}/DejaVuSans-Oblique.ttf); }
+
+body { font-family: DejaVuSerif; font-size: 8.2pt; color: #232323; line-height: 1.25; }
+
+/* ---------- header band ---------- */
+.band { background: #10483c; padding: 6px 10px; width: 100%; }
+.band-title { font-family: DejaVuSansBold; font-size: 9.5pt; letter-spacing: 2.4pt; color: #f4f1ea; }
+.band-right { font-family: DejaVuSans; font-size: 6.5pt; color: #cfe3dc; text-align: right; }
+
+.listing-name { font-family: DejaVuSerifBold; font-size: 15.5pt; color: #10483c; margin: 8px 0 1px 0; }
+.listing-meta { font-family: DejaVuSans; font-size: 7.5pt; color: #5b5b5b; margin-bottom: 6px; }
+
+/* ---------- estimate ribbon ---------- */
+.ribbon { background: #fdf3dd; border-top: 1pt solid #d97706; border-bottom: 1pt solid #d97706;
+          padding: 2.5px 10px; font-family: DejaVuSansBold; font-size: 6.3pt;
+          letter-spacing: 1.6pt; color: #92400e; text-align: center; margin-bottom: 8px; }
+
+/* ---------- hero: two big numbers ---------- */
+.hero { width: 100%; margin-bottom: 4px; }
+.hero td { width: 50%; padding: 2px 12px; }
+.hero .num { font-family: DejaVuSerifBold; font-size: 26pt; color: #10483c; }
+.hero .num.neg { color: #b91c1c; }
+.hero .cap { font-family: DejaVuSansBold; font-size: 6.4pt; letter-spacing: 1pt; color: #444;
+             text-transform: uppercase; border-top: 0.75pt solid #d8d5cc; padding-top: 2px; }
+.hero .foot { font-family: DejaVuSans; font-size: 6.2pt; color: #6b6b6b; }
+
+.chips { width: 100%; margin: 2px 0 6px 0; }
+.chips td { width: 25%; text-align: center; background: #f4f1ea; font-family: DejaVuSans;
+            font-size: 7pt; color: #333; padding: 3px 2px; border: 2pt solid #ffffff; }
+.chips b { font-family: DejaVuSansBold; }
+
+/* ---------- section headers ---------- */
+.h2 { font-family: DejaVuSansBold; font-size: 7.2pt; letter-spacing: 1.8pt; color: #f4f1ea;
+       background: #10483c; padding: 2.5px 8px; text-transform: uppercase; margin: 6px 0 4px 0; }
+
+/* ---------- signals ---------- */
+.sig { width: 100%; }
+.sig td { padding: 2px 6px; border-bottom: 0.5pt solid #e6e3da; font-size: 7.6pt; vertical-align: top; }
+.dot { font-family: DejaVuSansBold; font-size: 7pt; width: 14px; text-align: center; }
+.pass { color: #047857; } .warn { color: #b45309; } .fail { color: #b91c1c; } .unknown { color: #6b7280; }
+.signame { font-family: DejaVuSansBold; font-size: 6.6pt; letter-spacing: 0.6pt; color: #333; text-transform: uppercase; }
+
+/* ---------- fixes ---------- */
+.fix { width: 100%; }
+.fix td { padding: 2px 6px; border-bottom: 0.5pt solid #e6e3da; font-size: 7.8pt; vertical-align: top; }
+.fixnum { font-family: DejaVuSerifBold; font-size: 12pt; color: #d97706; width: 18pt; text-align: center; }
+
+/* ---------- audit summary ---------- */
+.summary { font-family: DejaVuSerifItalic; font-size: 8pt; color: #2b2b2b; background: #f7f6f2;
+           padding: 6px 9px; border-left: 2.5pt solid #10483c; }
+
+/* ---------- comps table ---------- */
+.comps { width: 100%; font-family: DejaVuSans; font-size: 6.9pt; }
+.comps th { background: #efede6; font-size: 6pt; letter-spacing: 0.8pt; text-transform: uppercase;
+            color: #444; padding: 2px 4px; border-bottom: 1pt solid #10483c; text-align: right; }
+.comps th.l { text-align: left; }
+.comps td { padding: 2px 4px; border-bottom: 0.5pt solid #e6e3da; text-align: right; }
+.comps td.l { text-align: left; }
+.est { color: #92400e; }
+
+/* ---------- chart ---------- */
+.chart { width: 100%; text-align: center; margin: 2px 0 4px 0; }
+.chart img { width: 5.9in; }
+
+/* ---------- method / footnotes ---------- */
+.method { font-family: DejaVuSans; font-size: 5.6pt; color: #555; line-height: 1.32; }
+.method li { margin-bottom: 1px; }
+
+/* ---------- footer ---------- */
+.footbar { border-top: 1.1pt solid #10483c; margin-top: 6px; padding-top: 3px;
+           font-family: DejaVuSans; font-size: 5.6pt; color: #555; }
+</style>
+</head>
+<body>
+
+<!-- HEADER BAND -->
+<table class="band"><tr>
+  <td class="band-title">STR&nbsp;REVENUE&nbsp;AUDIT</td>
+  <td class="band-right">{{ view.metro_line }}<br>Generated {{ view.generated_at }}</td>
+</tr></table>
+
+<!-- LISTING HEAD -->
+<div class="listing-name">{{ view.listing_name }}</div>
+<div class="listing-meta">{{ view.listing_meta }}</div>
+
+<!-- ESTIMATE RIBBON -->
+<div class="ribbon">All revenue figures on this page are ESTIMATES — method printed below</div>
+
+<!-- HERO NUMBERS -->
+<table class="hero"><tr>
+  <td>
+    <div class="num{% if view.est_a_negative %} neg{% endif %}">{{ view.est_a }}</div>
+    <div class="cap">ESTIMATE A — Price positioning gap</div>
+    <div class="foot">(comp median ${{ view.comp_price }} − your ${{ view.price }}) × {{ view.occupancy }} occupancy × 365 nights</div>
+  </td>
+  <td>
+    <div class="num{% if view.est_b_negative %} neg{% endif %}">{{ view.est_b }}</div>
+    <div class="cap">ESTIMATE B — vs comp median revenue*</div>
+    <div class="foot">Inside Airbnb model: comp median {{ view.comp_ia_rev }}* minus this listing's {{ view.target_ia_rev }}* · active comps only (n={{ view.active_comps_n }})</div>
+  </td>
+</tr></table>
+
+<table class="chips"><tr>
+  <td><b>${{ view.price }}</b><br>your nightly price</td>
+  <td><b>${{ view.comp_price }}</b><br>comp median price</td>
+  <td><b>{{ view.occupancy_pct }}</b><br>comp avg occupancy</td>
+  <td><b>{{ view.comp_n }} comps</b><br>{{ view.pool }} pool</td>
+</tr></table>
+
+{% if view.chart_b64 %}
+<div class="chart"><img src="data:image/png;base64,{{ view.chart_b64 }}"></div>
+{% endif %}
+
+<!-- SIGNALS -->
+<div class="h2">What the listing tells us</div>
+<table class="sig">
+{% for s in view.signals %}
+  <tr><td class="dot {{ s.status }}">&#9679;</td>
+      <td><span class="signame">{{ s.name }}</span><br>{{ s.summary }}</td></tr>
+{% endfor %}
+</table>
+
+<!-- TOP FIXES -->
+<div class="h2">Top fixes, in order of impact</div>
+<table class="fix">
+{% for f in view.fixes %}
+  <tr><td class="fixnum">{{ loop.index }}</td><td>{{ f }}</td></tr>
+{% endfor %}
+</table>
+
+<!-- SUMMARY -->
+<div class="h2">The short version</div>
+<div class="summary">{{ view.summary_html | safe }}</div>
+
+<!-- COMPS -->
+<div class="h2">Comp set (top {{ view.comps_rows|length }} of {{ view.comp_n }})</div>
+<table class="comps">
+  <tr><th class="l">#</th><th class="l">Neighbourhood</th><th class="l">Room type</th><th>Price</th><th>Est. rev*</th><th>Reviews</th></tr>
+  {% for c in view.comps_rows %}
+  <tr><td class="l">{{ c.rank }}</td><td class="l">{{ c.hood }}</td><td class="l">{{ c.room_type }}</td>
+      <td>${{ c.price }}</td><td class="est">{{ c.est_rev }}</td><td>{{ c.reviews }}</td></tr>
+  {% endfor %}
+</table>
+
+<!-- METHOD -->
+<div class="h2">How we calculated it</div>
+<ol class="method">
+{% for line in view.method %}<li>{{ line }}</li>{% endfor %}
+</ol>
+
+<!-- FOOTER -->
+<div class="footbar">
+  *ESTIMATE — Inside Airbnb's own model (estimated_revenue_l365d), not booked revenue. Both gaps above are directional sizing, not a guarantee or an invoice.
+  Comp median uses medians throughout. Occupancy blends booked and blocked nights.<br>
+  Data: Inside Airbnb, Austin TX snapshot 2026-09-17 (<b>CC BY 4.0</b>, attribution required — please credit Inside Airbnb).
+  Generated {{ view.generated_at }} · Page 1 of 1 · STR Revenue Audit
+</div>
+
+</body>
+</html>
