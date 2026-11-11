@@ -72,17 +72,13 @@ def _candidate_pool(df: pd.DataFrame, target: pd.Series, radius_km: float, k_min
     return pool, "metro-wide (sparse comps)"
 
 
-def build_comps(df: pd.DataFrame, listing_id: int, k: int = 12,
-                radius_km: float = 3.0, k_min: int = 8) -> tuple[pd.DataFrame, str]:
-    """Return (comps table, note on how the pool was built) for one listing."""
-    match = df.index[df["id"] == listing_id]
-    if len(match) == 0:
-        sample_ids = df["id"].head(5).tolist()
-        raise KeyError(f"listing {listing_id} not found. e.g. {sample_ids}")
-    target = df.loc[match[0]]
-
+def rank_comps(df: pd.DataFrame, target: pd.Series, k: int = 12,
+               radius_km: float = 3.0, k_min: int = 8) -> tuple[pd.DataFrame, str]:
+    """Rank comps for an arbitrary target Series (dataset row or user-entered)."""
     pool, how = _candidate_pool(df, target, radius_km, k_min)
-    pool = pool[pool["id"] != target["id"]]
+    target_id = target.get("id")
+    if target_id is not None and pd.notna(target_id):
+        pool = pool[pool["id"] != target_id]
     if len(pool) == 0:
         raise ValueError("no comp candidates found — dataset too sparse")
 
@@ -110,6 +106,17 @@ def build_comps(df: pd.DataFrame, listing_id: int, k: int = 12,
                 "number_of_reviews", "reviews_per_month",
                 "last_review", "estimated_revenue_l365d"]
     return comps[out_cols].reset_index(drop=True), how
+
+
+def build_comps(df: pd.DataFrame, listing_id: int, k: int = 12,
+                radius_km: float = 3.0, k_min: int = 8) -> tuple[pd.DataFrame, str]:
+    """Return (comps table, note on how the pool was built) for one dataset listing."""
+    match = df.index[df["id"] == listing_id]
+    if len(match) == 0:
+        sample_ids = df["id"].head(5).tolist()
+        raise KeyError(f"listing {listing_id} not found. e.g. {sample_ids}")
+    target = df.loc[match[0]]
+    return rank_comps(df, target, k=k, radius_km=radius_km, k_min=k_min)
 
 
 def _print_summary(target: pd.Series, comps: pd.DataFrame, how: str) -> None:

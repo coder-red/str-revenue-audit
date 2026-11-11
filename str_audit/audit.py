@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from str_audit.comps import DEFAULT_DATA, PROJECT_ROOT, build_comps
+from str_audit.comps import DEFAULT_DATA, PROJECT_ROOT, build_comps, rank_comps
 from str_audit.data import load_listings
 from str_audit.llm import summarize_audit
 from str_audit.revenue import estimate_gap
@@ -58,17 +58,15 @@ def _sanitize(obj):
     return obj
 
 
-def run_audit(df: pd.DataFrame, listing_id: int, k: int = 12, radius_km: float = 3.0,
-              k_min: int = 8, photo_count: int | None = None,
-              provider: str | None = None) -> dict:
-    comps, pool_how = build_comps(df, listing_id, k=k, radius_km=radius_km, k_min=k_min)
-    target = df.loc[df["id"] == listing_id].iloc[0]
-
+def build_audit(target: pd.Series, comps: pd.DataFrame, pool_how: str,
+                listing_id=None, photo_count: int | None = None,
+                provider: str | None = None) -> dict:
+    """Signals + estimates + LLM summary for a prepared target row vs comps."""
     signals = run_signals(target, comps_median_price=comps["price"].median(),
                           photo_count=photo_count)
     estimate = estimate_gap(target, comps)
 
-    target_bits = {k_: _jsonable(target[k_]) for k_ in [
+    target_bits = {k_: _jsonable(target.get(k_)) for k_ in [
         "id", "name", "neighbourhood_cleansed", "room_type", "property_type",
         "bedrooms", "beds", "baths", "price", "minimum_nights", "availability_365",
         "number_of_reviews", "number_of_reviews_ltm", "last_review",
@@ -78,7 +76,7 @@ def run_audit(df: pd.DataFrame, listing_id: int, k: int = 12, radius_km: float =
     ]}
 
     audit = {
-        "listing_id": int(listing_id),
+        "listing_id": int(listing_id) if listing_id is not None and pd.notna(listing_id) else None,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "data_source": "Inside Airbnb — Austin, TX, snapshot 2026-09-17 (CC BY 4.0)",
         "target": target_bits,
@@ -99,11 +97,74 @@ def run_audit(df: pd.DataFrame, listing_id: int, k: int = 12, radius_km: float =
     return audit
 
 
+def run_audit(df: pd.DataFrame, listing_id: int, k: int = 12, radius_km: float = 3.0,
+              k_min: int = 8, photo_count: int | None = None,
+              provider: str | None = None) -> dict:
+    comps, pool_how = build_comps(df, listing_id, k=k, radius_km=radius_km, k_min=k_min)
+    target = df.loc[df["id"] == listing_id].iloc[0]
+    return build_audit(target, comps, pool_how, listing_id=listing_id,
+                       photo_count=photo_count, provider=provider)
+
+
+def make_custom_target(d: dict) -> pd.Series:
+    """Build a target Series from user-entered values (Streamlit form)."""
+    def num(v):
+        try:
+            return float(v) if v is not None and v != "" else None
+        except (TypeError, ValueError):
+            return None
+
+    last_review = d.get("last_review")
+    if last_review:
+        last_review = pd.Timestamp(last_review)
+
+    row = {
+        "id": pd.NA,
+        "name": d.get("name") or "Your listing",
+        "neighbourhood_cleansed": str(d.get("neighbourhood") or "unknown"),
+        "room_type": d.get("room_type") or "Entire home/apt",
+        "property_type": d.get("property_type") or "",
+        "bedrooms": num(d.get("bedrooms")),
+        "beds": num(d.get("beds")),
+        "baths": num(d.get("baths")),
+        "price": num(d.get("price")),
+        "minimum_nights": num(d.get("minimum_nights")),
+        "availability_365": num(d.get("availability_365")),
+        "number_of_reviews": num(d.get("number_of_reviews")),
+        "number_of_reviews_ltm": None,
+        "last_review": last_review if last_review is not pd.NaT else pd.NaT,
+        "reviews_per_month": num(d.get("reviews_per_month")),
+        "review_scores_rating": num(d.get("review_scores_rating")),
+        "estimated_occupancy_l365d": num(d.get("estimated_occupancy_l365d")),
+        "estimated_revenue_l365d": num(d.get("estimated_revenue_l365d")),
+        "picture_url": None,
+        "description": d.get("description") or None,
+        "latitude": num(d.get("latitude")),
+        "longitude": num(d.get("longitude")),
+    }
+    if row["availability_365"] is not None:
+        row["availability_365"] = int(row["availability_365"])
+    if row["number_of_reviews"] is not None:
+        row["number_of_reviews"] = int(row["number_of_reviews"])
+    return pd.Series(row)
+
+
+def run_audit_custom(df: pd.DataFrame, target_dict: dict, k: int = 12,
+                     radius_km: float = 3.0, k_min: int = 8,
+                     photo_count: int | None = None,
+                     provider: str | None = None) -> dict:
+    target = make_custom_target(target_dict)
+    comps, pool_how = rank_comps(df, target, k=k, radius_km=radius_km, k_min=k_min)
+    return build_audit(target, comps, pool_how, listing_id=None,
+                       photo_count=photo_count, provider=provider)
+
+
 def _print_report(audit: dict) -> None:
     t = audit["target"]
     n = audit["estimate"]["numbers"]
+    lid = audit["listing_id"] if audit["listing_id"] is not None else "custom"
     print("=" * 72)
-    print(f"STR LISTING REVENUE AUDIT — listing {audit['listing_id']}")
+    print(f"STR LISTING REVENUE AUDIT — listing {lid}")
     print(audit["data_source"])
     print("=" * 72)
     print(f"\n{t['name']}")
@@ -161,7 +222,7 @@ def main() -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"audit_{listing_id}.json"
+    out_path = out_dir / f"audit_{listing_id if listing_id is not None else 'custom'}.json"
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(_sanitize(audit), fh, indent=2, allow_nan=False)
     print(f"wrote {out_path}")
