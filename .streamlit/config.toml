@@ -1,0 +1,10 @@
+# STR Revenue Audit — Streamlit look & feel (product-grade, property-manager facing)
+[theme]
+primaryColor = "#10483c"          # deep green (matches PDF)
+backgroundColor = "#faf8f5"       # warm off-white
+secondaryBackgroundColor = "#f4f1ea"
+textColor = "#232323"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
