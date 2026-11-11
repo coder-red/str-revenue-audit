@@ -52,5 +52,5 @@ TOP FIXES (in order)
 INSTRUCTIONS
 - Open with one sentence: the single biggest problem in plain English.
 - Then 2-4 short bullets: the fixes, each tied to what it means for bookings or rate.
-- Close with one sentence naming the estimated annual upside, and that it is an estimate, not a guarantee.
+- Close with one sentence naming the estimated annual upside "vs the comp median" figure exactly as given, and state clearly that it is an estimate, not a guarantee. Do not substitute the price-positioning figure for it.
 - Do not add any other numbers. Do not use markdown headers."""

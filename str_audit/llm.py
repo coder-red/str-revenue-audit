@@ -84,7 +84,9 @@ def _groq(prompt: str) -> str:
         messages=[{"role": "system", "content": SYSTEM},
                   {"role": "user", "content": prompt}],
         temperature=0.4,
-        max_tokens=400,
+        # Reasoning models (e.g. gpt-oss-*) spend most of the budget on hidden
+        # reasoning tokens — 400 yields finish_reason=length with empty content.
+        max_tokens=2500,
     )
     text = resp.choices[0].message.content
     if not text:
