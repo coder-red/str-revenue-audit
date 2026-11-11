@@ -1,6 +1,15 @@
 # Deploy
 
-Two deployable surfaces, two free hosts. Everything is committed to the repo.
+**Live now (Render, free tier):**
+
+- App: <https://str-revenue-audit.onrender.com> (sleeps when idle; first load ~30–60 s)
+- Landing page: <https://str-revenue-audit-site.onrender.com>
+
+Both auto-deploy from `main` on push (autoDeploy = yes). The app reads `GROQ_API_KEY` etc.
+from Render env vars — **rotate the key that was pasted in chat** and update it in the
+Render dashboard → service `str-revenue-audit` → Environment.
+
+Alternative hosts (not used, kept for reference):
 
 ## 1. Streamlit app → Streamlit Community Cloud (free, ~3 min)
 
@@ -28,12 +37,10 @@ Option B — from this machine with a token:
 1. Create a token at <https://vercel.com/account/tokens>
 2. `cd site && npx vercel --prod --yes --token <TOKEN>`
 
-After the Streamlit app is live, edit `site/index.html`: add the `.streamlit.app` URL as a
-second CTA button in the hero (it's deliberately absent until the app has a public URL).
-
 ## Honesty notes
 
 - Vercel **cannot** host the Streamlit app itself (no persistent processes/WebSockets).
-  It hosts the static landing page; Streamlit Community Cloud hosts the app.
+  It hosts the static landing page; Render hosts both (this is what's live now).
 - The 2026-09-17 Inside Airbnb snapshot is pinned in `str_audit/comps.py` and the PDF footer —
   refresh deliberately, not silently.
+- Render free tier: 512 MB RAM, sleeps after 15 min idle, ~30–60 s cold start. Fine for a portfolio demo.

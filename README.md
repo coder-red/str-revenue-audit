@@ -90,8 +90,8 @@ to the fallback instead of crashing.
 
 ## Deploy
 
-Free hosting: Streamlit Community Cloud (the app) + Vercel (the static landing page in `site/`).
-Exact steps: **[docs/deploy.md](docs/deploy.md)**.
+**Live:** app — <https://str-revenue-audit.onrender.com> · landing page — <https://str-revenue-audit-site.onrender.com>
+(free Render tier; auto-deploy from `main`). Steps for other hosts: **[docs/deploy.md](docs/deploy.md)**.
 
 ## Phase 3 — one-page PDF + Streamlit app
 
