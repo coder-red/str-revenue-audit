@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STR Revenue Audit — one-page PDF audits for short-term rentals</title>
+<meta name="description" content="Compare one short-term rental listing against its Austin comp pool using Inside Airbnb open data. See the estimated revenue gap, the top fixes, and a clean one-page PDF a property manager can act on. All revenue figures are honest ESTIMATES with the math printed.">
+<meta property="og:title" content="STR Revenue Audit">
+<meta property="og:description" content="One-page PDF audit of a short-term rental listing vs its local comp pool. Inside Airbnb data, zero paid services.">
+<meta property="og:image" content="assets/screenshot-pdf.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2310483c'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23f4f1ea' font-family='Georgia'>$</text></svg>">
+<style>
+  :root {
+    --green: #10483c; --green-deep: #0b352d; --bone: #faf8f5; --panel: #f4f1ea;
+    --ink: #232323; --muted: #5b5b5b; --amber: #d97706; --amber-dark: #92400e; --line: #e3e0d7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bone); color: var(--ink); font-family: Georgia, 'Times New Roman', serif; line-height: 1.55; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* NAV */
+  header { position: sticky; top: 0; z-index: 10; background: rgba(250,248,245,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 58px; }
+  .brand { font-size: 17px; letter-spacing: 2.5px; font-weight: bold; color: var(--green); text-decoration: none; }
+  .nav a.ghbtn { font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; text-decoration: none; color: var(--bone); background: var(--green); padding: 8px 16px; border-radius: 6px; }
+  .nav a.ghbtn:hover { background: var(--green-deep); }
+
+  /* HERO */
+  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 44px; align-items: center; padding: 56px 0 40px; }
+  .eyebrow { font-family: Arial, sans-serif; font-size: 11px; letter-spacing: 2.2px; color: var(--amber-dark); text-transform: uppercase; font-weight: bold; margin-bottom: 14px; }
+  h1 { font-size: 46px; line-height: 1.12; color: var(--green); font-weight: 700; }
+  h1 em { font-style: italic; color: var(--amber); }
+  .sub { margin-top: 18px; font-size: 17px; color: var(--muted); max-width: 46ch; }
+  .ctas { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+  .btn { font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; text-decoration: none; border-radius: 6px; padding: 12px 22px; display: inline-block; }
+  .btn-primary { background: var(--green); color: var(--bone); }
+  .btn-primary:hover { background: var(--green-deep); }
+  .btn-ghost { color: var(--green); border: 1.5px solid var(--green); background: transparent; }
+  .btn-ghost:hover { background: var(--panel); }
+  .trust { margin-top: 26px; font-family: Arial, sans-serif; font-size: 12px; color: var(--muted); }
+  .hero img.pdf { width: 100%; border-radius: 8px; border: 1px solid var(--line); box-shadow: 0 18px 44px rgba(16,72,60,.22); }
+
+  /* SECTIONS */
+  section { padding: 46px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 27px; color: var(--green); margin-bottom: 22px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .step { background: #ffffff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .step .n { width: 30px; height: 30px; border-radius: 50%; background: var(--green); color: var(--bone); font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+  .step h3 { font-size: 16px; color: var(--green); margin-bottom: 6px; font-family: Arial, sans-serif; }
+  .step p { font-size: 14px; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .card { background: #ffffff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .card h3 { font-size: 16px; color: var(--green); margin-bottom: 6px; font-family: Arial, sans-serif; }
+  .card p { font-size: 14px; color: var(--muted); }
+  .card code, code { font-family: Consolas, monospace; font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--green-deep); }
+
+  .shot { width: 100%; border-radius: 8px; border: 1px solid var(--line); }
+  .banner { background: var(--panel); border-left: 4px solid var(--amber); border-radius: 0 8px 8px 0; padding: 18px 20px; font-size: 15px; color: #4a3a12; }
+
+  footer { background: var(--green); color: #cfe3dc; padding: 26px 0; font-family: Arial, sans-serif; font-size: 12.5px; }
+  footer a { color: #f4f1ea; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; padding-top: 36px; }
+    h1 { font-size: 34px; }
+    .steps, .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top">STR&nbsp;REVENUE&nbsp;AUDIT</a>
+    <a class="ghbtn" href="https://github.com/coder-red/str-revenue-audit">View on GitHub →</a>
+  </div>
+</header>
+
+<div class="wrap" id="top">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <div class="eyebrow">For property managers · Austin, TX</div>
+      <h1>That listing is bleeding<br><em>estimated revenue.</em><br>Here's the one-page proof.</h1>
+      <p class="sub">STR Revenue Audit compares any short-term rental listing against its local comp pool from free, public Inside Airbnb data — then prints a clean one-page PDF showing the estimated gap and the top three fixes. No scraping, no paid services, no fake precision.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="https://github.com/coder-red/str-revenue-audit">Open the repo &amp; sample PDF</a>
+        <a class="btn btn-ghost" href="#how">How it works</a>
+      </div>
+      <div class="trust">Inside Airbnb data (CC BY 4.0) · Python · pandas + DuckDB · Streamlit · xhtml2pdf · free LLMs only</div>
+    </div>
+    <div>
+      <a href="https://github.com/coder-red/str-revenue-audit/blob/main/docs/sample_audit_21004527.pdf" title="Open the sample audit PDF">
+        <img class="pdf" src="assets/screenshot-pdf.png" alt="One-page STR Revenue Audit PDF: est. revenue gap vs comp median, signals, top fixes">
+      </a>
+    </div>
+  </div>
+
+  <!-- SAMPLE CLAIM -->
+  <div class="banner">
+    <strong>Real output.</strong> Sample audit for a live Austin listing: last review in 2020, $0 modelled annual revenue vs a <strong>$16,959</strong> comp median — with the formulas printed under every number, and ESTIMATE stamped across the page. Yours could look just like this, minus the awkward conversation with the owner.
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <h3>Pick a listing</h3>
+        <p>Look one up from the Inside Airbnb Austin snapshot (2026-09-17), enter it manually (unlocks the photo-count signal), or upload a one-row CSV/JSON.</p>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <h3>Comps get built</h3>
+        <p>Same room type, beds ±1, same neighbourhood (3 km radius fallback), then k-nearest neighbours on scaled price/beds/baths — the nearest 12 listings win.</p>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <h3>Get the one-pager</h3>
+        <p>Gap estimates, signals (reviews, description, photos, price vs comps), ranked fixes, and an LLM summary in plain English — as a print-ready PDF.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY DIFFERENT -->
+  <section>
+    <h2>Honest by construction</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>ESTIMATES, not invoices</h3>
+        <p>Two estimates only: <code>A = (comp median − your price) × comp occupancy × 365</code> and <code>B = comp median revenue − yours</code> (Inside Airbnb model, active comps only). Both formulas are printed on the page. No invented per-signal dollars.</p>
+      </div>
+      <div class="card">
+        <h3>Free, public data only</h3>
+        <p>Inside Airbnb snapshot for Austin, TX (2026-09-17, CC BY 4.0). No Airbnb scraping — the loader is ~100 lines and the CSV is the only input.</p>
+      </div>
+      <div class="card">
+        <h3>Fixes you can action Monday</h3>
+        <p>Signals are plain English: reviews dried up, description under 60 words, price 10%+ off the comp median, photos under the benchmark — ranked by severity, not vibes.</p>
+      </div>
+      <div class="card">
+        <h3>Reproducible pipeline</h3>
+        <p><code>pip install -r requirements.txt</code> → <code>python scripts/download_data.py</code> → <code>python -m str_audit.audit --listing-id …</code> → <code>python -m str_audit.report --listing-id …</code></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE APP -->
+  <section>
+    <h2>The tool</h2>
+    <img class="shot" src="assets/screenshot-app.png" alt="Streamlit app: pick a listing, run the audit, download the PDF">
+    <p style="margin-top:14px; color:var(--muted); font-size:14px;">Upload or enter a listing, watch the audit assemble, download the PDF. Photo counts are the one thing public data can't see, so they happen here — in the browser, never stored.</p>
+  </section>
+
+  <!-- CTA -->
+  <section style="text-align:center; border-top:1px solid var(--line);">
+    <h2 style="margin-bottom:12px;">Want this for your portfolio?</h2>
+    <p style="color:var(--muted); max-width:52ch; margin:0 auto 18px;">The whole thing is open source: pipeline, comps engine, PDF renderer, Streamlit shell, tests. Inside Airbnb attribution required (CC BY 4.0). No license file yet — ask before reuse.</p>
+    <a class="btn btn-primary" style="font-size:15px; padding:14px 30px;" href="https://github.com/coder-red/str-revenue-audit">View on GitHub →</a>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div>STR Revenue Audit · built with free, public data</div>
+    <div>Data: Inside Airbnb, Austin TX · 2026-09-17 · <a href="https://insideairbnb.com/get-the-data/">CC BY 4.0</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

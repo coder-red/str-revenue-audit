@@ -88,6 +88,11 @@ from the audit dict — no invented numbers, works offline. Prompt lives in
 `str_audit/audit_prompt.py`; every call is wrapped so any API failure degrades
 to the fallback instead of crashing.
 
+## Deploy
+
+Free hosting: Streamlit Community Cloud (the app) + Vercel (the static landing page in `site/`).
+Exact steps: **[docs/deploy.md](docs/deploy.md)**.
+
 ## Phase 3 — one-page PDF + Streamlit app
 
 ```bash
