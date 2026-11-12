@@ -63,6 +63,14 @@ def sidebar():
         cols = st.columns(4)
         for i, (k, v) in enumerate(counts.items()):
             cols[i % 4].metric(k.replace("_", " "), v)
+        st.divider()
+        st.markdown("**Contact research (manual)**")
+        cf = store.contact_found_counts(DB)
+        if cf["researched"]:
+            st.metric("Contact found rate", f"{cf['found_rate']:.0%}",
+                      f"{cf['yes']} found of {cf['researched']} researched")
+        else:
+            st.caption("No contact research recorded yet — mark leads in the queue to build the rate.")
 
         provider = os.environ.get("LLM_PROVIDER", "gemini").lower()
         key_present = bool(os.environ.get("GROQ_API_KEY" if provider == "groq" else "GEMINI_API_KEY"))
@@ -200,35 +208,56 @@ def review_queue():
                                       can_spam_ok=1 if result["can_spam_ok"] else 0)
                     st.rerun()
 
-    # -- right: contact capture + the draft ------------------------------------
+    # -- right: contact research capture + the draft ---------------------------
     with right:
-        st.markdown("#### Contact (public info only)")
+        st.markdown("#### Contact research (manual — no lookup services, no guessing)")
+        website_url = st.text_input("Host's public website / business listing",
+                                    value=d.get("website_url") or "", key=f"web_{d['host_id']}",
+                                    placeholder="their site, BBB / Google Business Profile, county property record…")
         e1, e2 = st.columns([2, 3])
-        email = e1.text_input("Contact email", value=d.get("contact_email") or "",
-                              key=f"email_{d['host_id']}", placeholder="found on their website / business listing")
-        found_on = e2.date_input("Found on", value=date.today(), key=f"found_on_{d['host_id']}")
+        email = e1.text_input("Contact email (if public)", value=d.get("contact_email") or "",
+                              key=f"email_{d['host_id']}", placeholder="found on their site / listing")
+        found_on = e2.date_input("Looked on", value=date.today(), key=f"found_on_{d['host_id']}")
         source = st.selectbox("Source", options=CONTACT_SOURCES,
                               index=CONTACT_SOURCES.index(d["contact_source"]) if d.get("contact_source") in CONTACT_SOURCES else 0,
                               key=f"source_{d['host_id']}")
-        contact_url = st.text_input("Source URL (so you can re-verify before sending)",
+        contact_url = st.text_input("Source URL (re-verify before sending)",
                                     value=d.get("contact_url") or "", key=f"curl_{d['host_id']}")
+        found_options = ["unresearched", "yes", "no", "not_found"]
+        current_found = d.get("contact_found") if d.get("contact_found") in ("yes", "no", "not_found") else "unresearched"
+        found = st.selectbox("Contact found?", options=found_options,
+                             index=found_options.index(current_found),
+                             key=f"found_{d['host_id']}",
+                             help="yes = a public contact exists (email required) · no = searched, none found · "
+                                  "not_found = confirmed nothing public after a proper look")
+        notes = st.text_area("Research notes (visible to you, anyone with the DB file)",
+                             value=d.get("notes") or "", key=f"notes_{d['host_id']}", height=70)
         csave, cno_contact = st.columns(2)
-        if csave.button("💾 Save contact", key=f"savec_{d['host_id']}", width='stretch'):
-            warning = None
+        if csave.button("💾 Save contact research", key=f"savec_{d['host_id']}", width='stretch'):
+            problems = []
+            if found == "yes" and not email.strip():
+                problems.append("marked 'yes' but no email set — a yes must point at a real, public address")
             if email.strip() and not contact_url.strip():
-                warning = "Public contact saved without a source URL — you'll want that before sending."
+                problems.append("contact email set without a source URL — record where it was found")
             store.update_lead(d["host_id"], DB,
+                              website_url=website_url.strip() or None,
                               contact_email=email.strip() or None,
                               contact_url=contact_url.strip() or None,
                               contact_source=source,
-                              contact_found_on=found_on.isoformat())
-            st.success("Contact saved." + (f" {warning}" if warning else ""))
+                              contact_found_on=found_on.isoformat(),
+                              contact_found=None if found == "unresearched" else found,
+                              notes=notes)
+            if problems:
+                st.warning("Saved — but: " + "; ".join(problems) + ".")
+            else:
+                st.success("Contact research saved.")
             st.rerun()
         if cno_contact.button("🚫 No public contact exists", key=f"nc_{d['host_id']}",
                               width='stretch',
-                              help="Marks the lead 'no contact'. Never guess an address."):
-            store.update_lead(d["host_id"], DB, status="no_contact")
-            st.info("Marked no contact. Moving on — this is the expected outcome for most hosts.")
+                              help="Marks research 'not_found' + lead 'no contact'. Never guess an address."):
+            store.update_lead(d["host_id"], DB, contact_found="not_found",
+                              contact_found_on=date.today().isoformat(), status="no_contact")
+            st.info("Marked not_found + no contact. Moving on — the expected outcome for most hosts.")
             st.rerun()
 
         subject, body, ok = _draft_editor(d)
@@ -238,13 +267,6 @@ def review_queue():
             st.success("Draft saved." + ("" if ok else " Still flagged — see above."))
             st.rerun()
         st.caption(f"Draft writer: {d.get('pitch_provider') or 'not drafted yet'}")
-
-        notes = st.text_area("Notes (visible to you, anyone with the DB file)",
-                             value=d.get("notes") or "", key=f"notes_{d['host_id']}", height=80)
-        if st.button("💾 Save notes", key=f"saven_{d['host_id']}"):
-            store.update_lead(d["host_id"], DB, notes=notes)
-            st.success("Notes saved.")
-            st.rerun()
 
         st.divider()
         st.markdown("#### Approve & track")
@@ -287,6 +309,7 @@ def all_leads_tab():
             "score": d["score"], "n_listings": d.get("n_listings"),
             "median_price": d.get("median_price"),
             "status": d["status"], "contact": d.get("contact_email"),
+            "found": d.get("contact_found") or "—",
             "source": d.get("contact_source"),
             "draft ok (CAN-SPAM)": bool(d.get("can_spam_ok")),
             "reasons": " | ".join(d.get("reasons") or []),
@@ -325,6 +348,14 @@ def export_tab():
     st.caption("Columns include the draft subject/body, contact + source URL, audit link, status "
                "timeline and reasons. Send manually from your own mailbox; honor opt-outs within "
                "10 business days; never mark anyone sent before they actually were.")
+    st.divider()
+    st.markdown("**Needs contact research (unresearched leads)**")
+    needing = store.needing_research(DB)
+    st.write(f"**{len(needing)}** lead(s) have not been researched yet (contact found = unresearched, "
+             f"status not closed). Work these in the queue, or hand the CSV to whoever does the manual dig.")
+    st.download_button("Download leads_needing_contact_research.csv",
+                       data=store.export_needing_research_csv(DB).encode("utf-8"),
+                       file_name="leads_needing_contact_research.csv", mime="text/csv")
 
 
 def main():

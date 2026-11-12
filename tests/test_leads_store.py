@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import pandas as pd
 import pytest
 
@@ -90,3 +92,90 @@ def test_list_and_status_counts_and_export(tmp_path):
 
     csv_all = store.export_csv(db)
     assert "Alice" in csv_all and "Bob" in csv_all
+
+
+# The pre-2026-11-12 schema, verbatim — migration must upgrade it in place.
+_OLD_SCHEMA = """
+CREATE TABLE IF NOT EXISTS leads (
+    host_id INTEGER PRIMARY KEY,
+    host_name TEXT,
+    n_listings INTEGER,
+    score INTEGER NOT NULL,
+    score_version TEXT NOT NULL,
+    reasons TEXT NOT NULL,
+    total_modelled_revenue REAL,
+    min_modelled_revenue REAL,
+    median_price REAL,
+    calculated_host_listings_count REAL,
+    weakest_listing_id INTEGER,
+    neighbourhoods TEXT,
+    host_url TEXT,
+    host_profile_url TEXT,
+    host_about TEXT,
+    contact_email TEXT,
+    contact_url TEXT,
+    contact_source TEXT,
+    contact_found_on TEXT,
+    status TEXT NOT NULL DEFAULT 'new',
+    audit_listing_id INTEGER,
+    audit_listing_url TEXT,
+    audit_json_path TEXT,
+    audit_provider TEXT,
+    pitch_subject TEXT,
+    pitch_body TEXT,
+    pitch_provider TEXT,
+    can_spam_ok INTEGER,
+    notes TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    approved_at TEXT,
+    sent_at TEXT,
+    replied_at TEXT,
+    meeting_at TEXT
+);
+"""
+
+
+def test_migration_adds_research_columns_to_old_db(tmp_path):
+    db = tmp_path / "old.db"
+    with sqlite3.connect(db) as conn:
+        conn.executescript(_OLD_SCHEMA)
+    store.upsert_scored_leads(_scored_df(), db)
+    with store.connect(db) as conn:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(leads)")}
+    assert {"website_url", "contact_found"} <= cols
+    lead = store.get_lead(101, db)
+    assert lead["contact_found"] is None and lead["website_url"] is None
+
+
+def test_contact_found_counts_and_clearing(tmp_path):
+    db = tmp_path / "leads.db"
+    store.upsert_scored_leads(_scored_df(), db)
+    assert store.contact_found_counts(db)["found_rate"] is None
+
+    store.update_lead(101, db, contact_found="yes", contact_email="alice@example.com")
+    store.update_lead(202, db, contact_found="not_found")
+    counts = store.contact_found_counts(db)
+    assert counts["yes"] == 1 and counts["not_found"] == 1 and counts["researched"] == 2
+    assert counts["found_rate"] == 0.5
+
+    store.update_lead(101, db, contact_found="")  # clear back to unresearched
+    assert store.get_lead(101, db)["contact_found"] is None
+    with pytest.raises(ValueError):
+        store.update_lead(101, db, contact_found="maybe")
+
+
+def test_export_needing_research_filters_and_excludes_closed(tmp_path):
+    db = tmp_path / "leads.db"
+    store.upsert_scored_leads(_scored_df(), db)
+
+    csv_text = store.export_needing_research_csv(db)
+    assert "Alice" in csv_text and "Bob" in csv_text
+
+    store.update_lead(101, db, contact_found="yes", contact_email="alice@example.com")
+    csv_text = store.export_needing_research_csv(db)
+    assert "Alice" not in csv_text and "Bob" in csv_text
+
+    store.update_lead(202, db, contact_found="not_found", status="no_contact")
+    csv_text = store.export_needing_research_csv(db)
+    assert "Alice" not in csv_text and "Bob" not in csv_text and csv_text.startswith("\ufeff")

@@ -26,12 +26,16 @@ DEFAULT_DB = PROJECT_ROOT / "data" / "leads.db"
 
 STATUSES = ("new", "approved", "rejected", "sent", "replied", "meeting",
             "no_contact", "do_not_contact")
+CONTACT_FOUND_VALUES = ("yes", "no", "not_found")
 _STATUS_TS = {"approved": "approved_at", "sent": "sent_at", "replied": "replied_at", "meeting": "meeting_at"}
 _UPDATABLE = {
     "status", "contact_email", "contact_url", "contact_source", "contact_found_on",
     "notes", "pitch_subject", "pitch_body", "can_spam_ok", "pitch_provider",
     "audit_listing_id", "audit_listing_url", "audit_json_path", "audit_provider",
+    "website_url", "contact_found",
 }
+# Statuses that mean the outreach question is closed — excluded from "needs research".
+_CLOSED_STATUSES = ("rejected", "do_not_contact", "no_contact", "sent", "replied", "meeting")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS leads (
@@ -54,6 +58,8 @@ CREATE TABLE IF NOT EXISTS leads (
     contact_url TEXT,
     contact_source TEXT,
     contact_found_on TEXT,
+    website_url TEXT,                       -- host's own site / business listing (public)
+    contact_found TEXT,                     -- 'yes' | 'no' | 'not_found' | NULL (not researched yet)
     status TEXT NOT NULL DEFAULT 'new',
     audit_listing_id INTEGER,
     audit_listing_url TEXT,
@@ -75,9 +81,19 @@ CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_score ON leads(score DESC);
 """
 
+# Forward-only, idempotent column additions for DBs created before 2026-11-12.
+_MIGRATIONS = [("website_url", "TEXT"), ("contact_found", "TEXT")]
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}
+    for name, decl in _MIGRATIONS:
+        if name not in existing:
+            conn.execute(f"ALTER TABLE leads ADD COLUMN {name} {decl}")
 
 
 def connect(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
@@ -86,6 +102,7 @@ def connect(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)
+    _migrate(conn)
     return conn
 
 
@@ -193,6 +210,59 @@ def list_leads(db_path: str | Path = DEFAULT_DB, status: str | None = None) -> l
     return [_row_to_dict(r) for r in rows]
 
 
+def contact_found_counts(db_path: str | Path = DEFAULT_DB) -> dict:
+    """Running stat for the UI: researched = any contact_found set; found = 'yes'."""
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT contact_found, count(*) AS n FROM leads GROUP BY contact_found"
+        ).fetchall()
+    counts = {"yes": 0, "no": 0, "not_found": 0, "unresearched": 0}
+    for r in rows:
+        key = r["contact_found"] if r["contact_found"] in CONTACT_FOUND_VALUES else "unresearched"
+        counts[key] += r["n"]
+    researched = counts["yes"] + counts["no"] + counts["not_found"]
+    counts["researched"] = researched
+    counts["found_rate"] = (counts["yes"] / researched) if researched else None
+    return counts
+
+
+def needing_research(db_path: str | Path = DEFAULT_DB) -> list[dict]:
+    """Leads not yet researched for a public contact (still need the manual dig)."""
+    placeholders = ",".join("?" * len(_CLOSED_STATUSES))
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            f"""SELECT * FROM leads
+                WHERE (contact_found IS NULL OR contact_found = '')
+                  AND status NOT IN ({placeholders})
+                ORDER BY score DESC, n_listings DESC, min_modelled_revenue ASC""",
+            _CLOSED_STATUSES,
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+_NEED_RESEARCH_COLS = [
+    "host_id", "host_name", "score", "n_listings", "score_version",
+    "weakest_listing_id", "audit_listing_id", "audit_listing_url",
+    "host_url", "host_profile_url", "host_about", "neighbourhoods",
+    "reasons", "notes", "pitch_subject", "created_at",
+]
+
+
+def export_needing_research_csv(db_path: str | Path = DEFAULT_DB) -> str:
+    """CSV of leads still needing manual contact research — for the outreach workflow."""
+    leads = needing_research(db_path)
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=_NEED_RESEARCH_COLS, lineterminator="\n",
+                            extrasaction="ignore")
+    writer.writeheader()
+    for d in leads:
+        row = {c: d.get(c) for c in _NEED_RESEARCH_COLS}
+        row["neighbourhoods"] = ", ".join(d.get("neighbourhoods") or [])
+        row["reasons"] = " | ".join(d.get("reasons") or [])
+        writer.writerow(row)
+    return "\ufeff" + buf.getvalue()
+
+
 def status_counts(db_path: str | Path = DEFAULT_DB) -> dict[str, int]:
     with connect(db_path) as conn:
         rows = conn.execute("SELECT status, count(*) AS n FROM leads GROUP BY status").fetchall()
@@ -208,6 +278,11 @@ def update_lead(host_id: int, db_path: str | Path = DEFAULT_DB, **fields) -> dic
     status = fields.get("status")
     if status is not None and status not in STATUSES:
         raise ValueError(f"status must be one of {STATUSES}")
+    found = fields.get("contact_found")
+    if found is not None and found not in CONTACT_FOUND_VALUES and found != "":
+        raise ValueError(f"contact_found must be one of {CONTACT_FOUND_VALUES} (or '' to clear)")
+    if found == "":
+        fields["contact_found"] = None
 
     now = _now()
     assignments = ["updated_at = ?"]
@@ -232,6 +307,7 @@ _EXPORT_COLS = [
     "host_id", "host_name", "status", "score", "n_listings", "median_price",
     "total_modelled_revenue", "min_modelled_revenue", "weakest_listing_id",
     "host_url", "contact_email", "contact_url", "contact_source", "contact_found_on",
+    "website_url", "contact_found",
     "audit_listing_id", "audit_listing_url", "audit_json_path",
     "pitch_subject", "pitch_body", "can_spam_ok", "notes",
     "created_at", "updated_at", "approved_at", "sent_at", "replied_at", "meeting_at",
