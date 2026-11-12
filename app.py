@@ -30,8 +30,8 @@ from str_audit.report import _money, _int_or_dash, render_pdf
 st.set_page_config(page_title="STR Revenue Audit", page_icon="🏠", layout="wide")
 
 CURATED = {
-    "21004527 — 1BR condo, 78741 (dead listing: great before/after story)": 21004527,
-    "5094445 — SoCo 2BR, strong performer (what 'healthy' looks like)": 5094445,
+    "Example — a dead listing (great before/after story)": 21004527,
+    "Example — a healthy listing (strong performer)": 5094445,
 }
 
 

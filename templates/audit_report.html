@@ -29,7 +29,8 @@ body { font-family: DejaVuSerif; font-size: 8.2pt; color: #232323; line-height: 
           letter-spacing: 1.6pt; color: #92400e; text-align: center; margin-bottom: 8px; }
 /* ---------- sample banner (public-safe sample render) ---------- */
 .samplebanner { background: #b91c1c; color: #ffffff; padding: 3pt 10px; font-family: DejaVuSansBold;
-                font-size: 7pt; letter-spacing: 1.2pt; text-align: center; margin-bottom: 6px; }
+                font-size: 7pt; letter-spacing: 1.2pt; text-align: center; margin-bottom: 6px;
+                white-space: normal; word-wrap: break-word; }
 
 /* ---------- hero: two big numbers ---------- */
 .hero { width: 100%; margin-bottom: 4px; }
@@ -100,7 +101,7 @@ body { font-family: DejaVuSerif; font-size: 8.2pt; color: #232323; line-height: 
 <div class="listing-meta">{{ view.listing_meta }}</div>
 
 {% if view.sample_banner %}
-<div class="samplebanner">SAMPLE — BASED ON PUBLIC INSIDE AIRBNB DATA — ESTIMATES ONLY · LISTING IDENTITY &amp; EXACT LOCATION REMOVED</div>
+<div class="samplebanner">SAMPLE — BASED ON PUBLIC INSIDE AIRBNB DATA — ESTIMATES ONLY</div>
 {% endif %}
 <!-- ESTIMATE RIBBON -->
 <div class="ribbon">All revenue figures on this page are ESTIMATES - method printed below</div>

@@ -13,8 +13,9 @@ Every revenue number in the report is labelled **ESTIMATE** with the calculation
 |---|---|
 | ![App](docs/screenshot-app.png) | ![PDF](docs/screenshot-pdf.png) |
 
-Sample output for a real (underperforming) Austin listing: **[docs/sample_audit_21004527.pdf](docs/sample_audit_21004527.pdf)**
-— 1BR condo, "78741", last review 2020, $0 modelled annual revenue vs $16,959 comp median.
+Sample output (anonymized — listing identity, exact location and photos removed; based on a real underperforming Austin listing):
+**[docs/sample_audit.pdf](docs/sample_audit.pdf)**
+— a dead Austin 1BR condo, $0 modelled annual revenue vs a $16,959 comp-median estimate.
 The tool's job: show a property manager the gap and the top fixes, honestly labelled as estimates.
 
 ## Status
