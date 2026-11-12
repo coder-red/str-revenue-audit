@@ -39,6 +39,9 @@ def main() -> int:
     ap.add_argument("--csv", default=DEFAULT_CSV, help="where to write the ranked CSV")
     ap.add_argument("--include-agencies", action="store_true",
                     help="do not exclude likely property-management agencies")
+    ap.add_argument("--agency-cutoff", type=int, default=None, metavar="N",
+                    help="agency threshold: hosts with >=N calculated listings are treated as "
+                         "professional operators and excluded (default: 5; try 8 or 15)")
     ap.add_argument("--db", default=str(store.DEFAULT_DB), help="SQLite path (default data/leads.db)")
     ap.add_argument("--no-store", action="store_true", help="do not write to the DB (read-only ranking)")
     ap.add_argument("--audit", type=int, default=0, metavar="N",
@@ -55,7 +58,8 @@ def main() -> int:
 
     print("Loading snapshot and building host table…")
     table = build_host_table(args.data) if args.data else build_host_table()
-    ranked_all = score_hosts(table, exclude_agencies=not args.include_agencies)
+    ranked_all = score_hosts(table, exclude_agencies=not args.include_agencies,
+                             agency_cutoff=args.agency_cutoff)
     ranked = ranked_all if args.include_agencies else ranked_all[~ranked_all["excluded_agency"]]
 
     agencies = ranked_all[ranked_all["agency_reason"].notna()]

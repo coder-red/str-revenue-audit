@@ -8,6 +8,18 @@ Weights and thresholds are named constants so they can be defended and tuned in
 one place (same pattern as str_audit/signals.py). Versioned so scores in the DB
 can be interpreted later.
 
+v2.0 (2026-11-12): re-weighted toward the buyer's target profile — small
+self-managing owners (roughly 1-4 listings) with weak listings.
+  * portfolio points shrank from 4 -> 3 and only apply at 2+ listings;
+    listings 5+ earn nothing (kept out by the default agency cutoff anyway)
+  * weak-listing signals carry more weight than portfolio size:
+    stale/missing reviews 2 -> 3, under-priced 2 -> 3, thin copy 1 -> 2
+  * single-listing hosts can now outscore an idle multi-listing host on
+    weak-listing evidence alone
+Agency exclusion cutoff is configurable (AGENCY_LISTINGS_CUTOFF or
+score_hosts(..., agency_cutoff=N) / CLI --agency-cutoff). Default is 5 —
+targeted operators, not 10+ listing agencies.
+
 Snapshot limitation (Austin 2026-09-17): Inside Airbnb publishes host_since and
 host_response_rate as 100% NULL in this file — those two points never fire. The
 code still checks them, so future snapshots that carry the fields work as built.
@@ -20,29 +32,28 @@ from typing import Optional
 
 import pandas as pd
 
-SCORE_VERSION = "1.0"
+SCORE_VERSION = "2.0"
 
-# --- tunable weights -----------------------------------------------------------
-WEIGHT_MULTI_LISTING = 3      # host runs >= 2 listings in this metro
-WEIGHT_TRIPLE_PLUS = 1        # ... plus one more point at >= 3 listings
-WEIGHT_PRICE_BELOW_NBHD = 2   # any listing >= 10% below its neighbourhood median price
-WEIGHT_STALE_REVIEWS = 2      # any listing with zero reviews or reviews stale > 180 days
-WEIGHT_THIN_DESCRIPTION = 1   # any listing with a thin/missing description (< 60 words)
+# --- tunable weights (defend these in the report footer) -----------------------
+WEIGHT_TWO_PLUS = 2           # host runs >= 2 listings in this metro
+WEIGHT_SWEET_SPOT = 1         # ... plus one more for the 3-4 listing sweet spot (not >= 5)
+WEIGHT_PRICE_BELOW_NBHD = 3   # any listing >= 10% below its neighbourhood median price
+WEIGHT_STALE_REVIEWS = 3      # any listing with zero reviews or reviews stale > 180 days
+WEIGHT_THIN_DESCRIPTION = 2   # any listing with a thin/missing description (< 60 words)
 WEIGHT_LOW_REVENUE = 2        # any listing in the metro's bottom modelled-revenue tercile
 WEIGHT_NOT_SUPERHOST = 1      # host is not a superhost (unlikely to have a PM)
-WEIGHT_SLOW_RESPONSE = 1      # host reply rate < 90% (owner is under-responsive)
-WEIGHT_NEW_HOST = 1           # host tenure < 24 months (overwhelmed by self-management)
+WEIGHT_SLOW_RESPONSE = 1      # host reply rate < 90% (unwrapped: NULL on this snapshot)
+WEIGHT_NEW_HOST = 1           # host tenure < 24 months (unwrapped: NULL on this snapshot)
 
 PRICE_BELOW_NBHD_PCT = 10.0
 SLOW_RESPONSE_BELOW = 0.90
 NEW_HOST_MONTHS = 24.0
-THREE_PLUS_LISTINGS = 3
+SWEET_SPOT_MAX = 4            # portfolio points stop here; >= AGENCY_LISTINGS_CUTOFF excluded
 
-# Hosts at/above this calculated metro-wide listing count are almost certainly
-# professional operators, not owners who underestimate the work. Also excluded
-# when the host name matches a company-like keyword (see below). Both checks are
-# transparent and reported via `agency_reason`; the CLI has --include-agencies.
-AGENCY_LISTINGS_CUTOFF = 15
+# Target profile: roughly 1-4 listings. Hosts at/above this calculated metro-wide
+# listing count are treated as professional operators, not the target owner. Also
+# excluded when the host name matches a company-like keyword (see below).
+AGENCY_LISTINGS_CUTOFF = 5
 
 # Company-like name tokens. Deliberately conservative: only tokens that almost
 # never appear in an individual host's display name.
@@ -52,18 +63,19 @@ AGENCY_NAME_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-MAX_SCORE = (WEIGHT_MULTI_LISTING + WEIGHT_TRIPLE_PLUS + WEIGHT_PRICE_BELOW_NBHD
+MAX_SCORE = (WEIGHT_TWO_PLUS + WEIGHT_SWEET_SPOT + WEIGHT_PRICE_BELOW_NBHD
              + WEIGHT_STALE_REVIEWS + WEIGHT_THIN_DESCRIPTION + WEIGHT_LOW_REVENUE
              + WEIGHT_NOT_SUPERHOST + WEIGHT_SLOW_RESPONSE + WEIGHT_NEW_HOST)
 
 
-def agency_reason(row: pd.Series) -> Optional[str]:
-    """Return why this host looks like a property-management agency, or None."""
+def agency_reason(row: pd.Series, cutoff: int | None = None) -> Optional[str]:
+    """Return why this host looks like a professional operator, or None."""
+    limit = AGENCY_LISTINGS_CUTOFF if cutoff is None else cutoff
     calc = row.get("calculated_host_listings_count")
     n_local = row.get("n_listings")
     effective = calc if pd.notna(calc) else n_local
-    if pd.notna(effective) and float(effective) >= AGENCY_LISTINGS_CUTOFF:
-        return f"calculated metro-wide listings ≥ {AGENCY_LISTINGS_CUTOFF} ({int(effective)})"
+    if pd.notna(effective) and float(effective) >= limit:
+        return f"calculated metro-wide listings ≥ {limit} ({int(effective)})"
     name = row.get("host_name")
     if isinstance(name, str):
         m = AGENCY_NAME_PATTERN.search(name)
@@ -80,16 +92,18 @@ def score_host(row: pd.Series) -> tuple[int, list[str]]:
     n = row.get("n_listings")
     n = int(n) if pd.notna(n) else 0
     if n >= 2:
-        score += WEIGHT_MULTI_LISTING
-        reasons.append(f"+{WEIGHT_MULTI_LISTING} — {n} listings in Austin (multi-property owner)")
-        if n >= THREE_PLUS_LISTINGS:
-            score += WEIGHT_TRIPLE_PLUS
-            reasons.append(f"+{WEIGHT_TRIPLE_PLUS} — portfolio of {n} (deeper pain, more upside)")
+        score += WEIGHT_TWO_PLUS
+        reasons.append(f"+{WEIGHT_TWO_PLUS} — {n} listings in Austin (self-managing portfolio)")
+        if SWEET_SPOT_MAX >= n >= 3:
+            score += WEIGHT_SWEET_SPOT
+            reasons.append(f"+{WEIGHT_SWEET_SPOT} — {n} listings (sweet spot for the target profile)")
+    elif n == 1:
+        reasons.append("+0 — 1 listing (eligible on weak-listing evidence alone)")
 
     frac_below = row.get("frac_below_nbhd")
     if pd.notna(frac_below) and float(frac_below) > 0:
         score += WEIGHT_PRICE_BELOW_NBHD
-        reasons.append(f"+{WEIGHT_PRICE_BELOW_NBHD} — listing priced ≥{(PRICE_BELOW_NBHD_PCT):.0f}% below "
+        reasons.append(f"+{WEIGHT_PRICE_BELOW_NBHD} — listing priced ≥{PRICE_BELOW_NBHD_PCT:.0f}% below "
                        f"neighbourhood median (money left on the table)")
 
     if bool(row.get("any_stale")):
@@ -127,17 +141,19 @@ def score_host(row: pd.Series) -> tuple[int, list[str]]:
     return score, reasons
 
 
-def score_hosts(df: pd.DataFrame, exclude_agencies: bool = True) -> pd.DataFrame:
-    """Score every host; add score, reasons, excluded_agency. Sorted best-first.
+def score_hosts(df: pd.DataFrame, exclude_agencies: bool = True,
+                agency_cutoff: int | None = None) -> pd.DataFrame:
+    """Score every host; add score, reasons, agency_reason, excluded_agency.
 
-    Ranking: score desc, then n_listings desc, then min modelled revenue asc (the
-    host bleeding the most gets the first call).
+    Ranking: score desc, then n_listings desc (more doors, better deal at equal
+    score), then min modelled revenue asc (the host bleeding the most gets the
+    first call).
     """
     out = df.copy()
     results = [score_host(out.iloc[i]) for i in range(len(out))]
     out["score"] = [s for s, _ in results]
     out["reasons"] = [r for _, r in results]
-    out["agency_reason"] = [agency_reason(out.iloc[i]) for i in range(len(out))]
+    out["agency_reason"] = [agency_reason(out.iloc[i], agency_cutoff) for i in range(len(out))]
     out["excluded_agency"] = out["agency_reason"].notna() if exclude_agencies else False
     return out.sort_values(
         by=["score", "n_listings", "min_modelled_revenue"],
