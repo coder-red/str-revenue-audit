@@ -73,11 +73,32 @@ def show_audit(audit: dict):
                f"(n={audit['comps']['n']})")
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Price gap/yr (A)", _money(n.get("est_annual_price_gap"), signed=True))
-    c2.metric("vs comp median/yr (B)", _money(n.get("est_annual_ia_revenue_gap"), signed=True))
+    c1.metric("Price gap/yr (A, ESTIMATE)", _money(n.get("est_annual_price_gap"), signed=True))
+    c2.metric("vs comp median/yr (B, ESTIMATE)", _money(n.get("est_annual_ia_revenue_gap"), signed=True))
     c3.metric("Comp median price", _money(n.get("comp_median_price")))
     occ = n.get("comp_avg_occupancy")
     c4.metric("Comp avg occupancy", f"{occ:.0%}" if occ is not None else "n/a")
+
+    # 2026-11-12: conservative range headline, or INSUFFICIENT DATA
+    lo, hi = n.get("est_gap_low"), n.get("est_gap_high")
+    if lo is None:  # older audits: derive from A and B
+        gaps = [g for g in (n.get("est_annual_price_gap"), n.get("est_annual_ia_revenue_gap"))
+                if isinstance(g, (int, float))]
+        if gaps:
+            lo, hi = min(gaps), max(gaps)
+    comps_n = audit["comps"].get("n", 0) or 0
+    prices = [r.get("price") for r in audit["comps"].get("table", [])
+              if isinstance(r.get("price"), (int, float))]
+    from str_audit.revenue import MAX_COMP_PRICE_CV, MIN_COMPS, price_cv
+    cv = price_cv(prices) if prices else None
+    too_thin = bool(n.get("insufficient_data")) or comps_n < MIN_COMPS or (cv is not None and cv > MAX_COMP_PRICE_CV)
+    if too_thin:
+        st.error("INSUFFICIENT DATA — the comp set is too thin or too dissimilar to quote an upside "
+                 "figure. We do not guess.")
+    elif lo is not None and hi is not None:
+        st.info(f"**Conservative range (ESTIMATE, public data):** {_money(lo, signed=True)} → "
+                f"{_money(hi, signed=True)} per year — price repriced only → full comp-median gap. "
+                f"An estimate, not a guarantee.")
 
     left, right = st.columns([1.15, 1])
     with left:

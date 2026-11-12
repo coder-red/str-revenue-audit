@@ -40,12 +40,19 @@ def clean_env(monkeypatch):
     yield
 
 
-def test_fallback_body_uses_only_audit_figures():
-    body = pitch.fallback_pitch(_LEAD, _AUDIT)
-    assert "20,000" in body            # the one estimate we surface
+def test_fallback_body_quotes_conservative_range_only():
+    body = pitch.fallback_pitch(_LEAD, _AUDIT)  # A=15,000, B=20,000 → range
+    assert "15,000" in body and "20,000" in body
     assert "estimate" in body.lower()
     assert "5094445" not in body       # ids are not talking points
-    assert "15,000" not in body        # we do not leak the other figure
+    assert "20-minute" in body
+
+
+def test_fallback_body_with_insufficient_data_quotes_no_figure():
+    thin = {**_AUDIT, "comps": {"n": 5, "pool": "neighbourhood", "median_price": 200.0}}
+    body = pitch.fallback_pitch(_LEAD, thin)
+    assert "15,000" not in body and "20,000" not in body
+    assert "too thin" in body
     assert "20-minute" in body
 
 

@@ -22,6 +22,8 @@ from pathlib import Path
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from str_audit.revenue import MAX_COMP_PRICE_CV, MIN_COMPS, price_cv
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = PROJECT_ROOT / "templates"
 ASSETS_FONTS = PROJECT_ROOT / "assets" / "fonts"
@@ -83,11 +85,35 @@ def make_chart_b64(audit: dict) -> str | None:
         return None  # chart is decoration; the PDF must render without it
 
 
-def build_view(audit: dict, chart_b64: str | None = None) -> dict:
+def build_view(audit: dict, chart_b64: str | None = None, sample: bool = False) -> dict:
     t = audit["target"]
     c = audit["comps"]
     n = audit["estimate"]["numbers"]
     gap_a, gap_b = n.get("est_annual_price_gap"), n.get("est_annual_ia_revenue_gap")
+
+    # --- 2026-11-12: headline is a conservative range, or INSUFFICIENT DATA ------
+    n_comps = c.get("n", 0) or 0
+    comp_prices = [row.get("price") for row in c.get("table", []) if isinstance(row.get("price"), (int, float))]
+    table_cv = price_cv(comp_prices)
+    computed_reason = None
+    if n_comps < MIN_COMPS:
+        computed_reason = f"only {n_comps} comparable listings (need ≥ {MIN_COMPS})"
+    elif table_cv is not None and table_cv > MAX_COMP_PRICE_CV:
+        computed_reason = (f"comp prices too dissimilar (stdev/median = {table_cv:.2f} "
+                           f"> {MAX_COMP_PRICE_CV})")
+    insufficient = bool(n.get("insufficient_data")) or computed_reason is not None
+    insufficient_reason = n.get("insufficient_reason") or computed_reason
+    lo, hi = n.get("est_gap_low"), n.get("est_gap_high")
+    if lo is None and not insufficient:
+        gaps = [g for g in (gap_a, gap_b) if isinstance(g, (int, float))]
+        if gaps:
+            lo, hi = min(gaps), max(gaps)
+    def _signed(v) -> str:
+        if v is None:
+            return "n/a"
+        sign = "+" if v >= 0 else "-"
+        return f"{sign}${abs(v):,.0f}"
+    gap_range = f"{_signed(lo)} → {_signed(hi)}" if (lo is not None and hi is not None) else None
 
     meta_bits = [
         t.get("room_type") or "Listing",
@@ -138,6 +164,10 @@ def build_view(audit: dict, chart_b64: str | None = None) -> dict:
         "est_b": _money(gap_b, signed=True),
         "est_a_negative": isinstance(gap_a, (int, float)) and gap_a < 0,
         "est_b_negative": isinstance(gap_b, (int, float)) and gap_b < 0,
+        "insufficient_data": insufficient,
+        "insufficient_reason": insufficient_reason,
+        "gap_range": gap_range,
+        "sample_banner": sample,
         "comp_price": f"{n['comp_median_price']:,.0f}" if n.get("comp_median_price") else "n/a",
         "price": f"{n['target_price']:,.0f}" if n.get("target_price") else "n/a",
         "occupancy": f"{occ:.3f}" if occ is not None else "n/a",
@@ -157,7 +187,7 @@ def build_view(audit: dict, chart_b64: str | None = None) -> dict:
     }
 
 
-def render_html(audit: dict, chart_b64: str | None = "auto") -> str:
+def render_html(audit: dict, chart_b64: str | None = "auto", sample: bool = False) -> str:
     if chart_b64 == "auto":
         chart_b64 = make_chart_b64(audit)
     env = Environment(
@@ -165,16 +195,16 @@ def render_html(audit: dict, chart_b64: str | None = "auto") -> str:
         autoescape=select_autoescape(["html"]),
     )
     template = env.get_template("audit_report.html")
-    view = build_view(audit, chart_b64=chart_b64)
+    view = build_view(audit, chart_b64=chart_b64, sample=sample)
     # file:/// prefix — xhtml2pdf wants a URL; forward slashes everywhere
     view["assets"] = ASSETS_FONTS.as_posix()
     return template.render(view=view, assets=view["assets"])
 
 
-def render_pdf(audit: dict, chart_b64: str | None = "auto") -> bytes:
+def render_pdf(audit: dict, chart_b64: str | None = "auto", sample: bool = False) -> bytes:
     from xhtml2pdf import pisa
 
-    html = render_html(audit, chart_b64=chart_b64)
+    html = render_html(audit, chart_b64=chart_b64, sample=sample)
     buf = BytesIO()
     result = pisa.CreatePDF(StringIO(html), dest=buf)
     if result.err:
@@ -191,6 +221,8 @@ def main() -> int:
     ap.add_argument("--k", type=int, default=12)
     ap.add_argument("--photo-count", type=int, default=None)
     ap.add_argument("--provider", choices=["gemini", "groq", "none"], default=None)
+    ap.add_argument("--sample", action="store_true",
+                    help="render as a public-safe SAMPLE banner (anonymized audit is your responsibility)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -201,7 +233,7 @@ def main() -> int:
     provider = None if args.provider in (None, "none") else args.provider
     audit = run_audit(df, args.listing_id, k=args.k,
                       photo_count=args.photo_count, provider=provider)
-    pdf = render_pdf(audit)
+    pdf = render_pdf(audit, sample=args.sample)
 
     out = Path(args.out) if args.out else DEFAULT_OUT_DIR / f"audit_{args.listing_id}.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)

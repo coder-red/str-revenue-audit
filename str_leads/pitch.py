@@ -22,6 +22,7 @@ import re
 from pathlib import Path
 
 from str_audit.llm import generate_text
+from str_audit.revenue import MAX_COMP_PRICE_CV, MIN_COMPS, price_cv
 
 try:
     from dotenv import load_dotenv
@@ -119,12 +120,38 @@ def _money(v) -> str:
     return f"${v:,.0f}" if isinstance(v, (int, float)) and v is not None else "n/a"
 
 
+def audit_range(audit: dict):
+    """(lo, hi, insufficient) for an audit dict — tolerant of pre-range audits."""
+    n = audit.get("estimate", {}).get("numbers", {})
+    comps = audit.get("comps", {})
+    lo, hi = n.get("est_gap_low"), n.get("est_gap_high")
+    if lo is None:
+        gaps = [g for g in (n.get("est_annual_price_gap"), n.get("est_annual_ia_revenue_gap"))
+                if isinstance(g, (int, float))]
+        if gaps:
+            lo, hi = min(gaps), max(gaps)
+    n_comp = comps.get("n", 12) or 0
+    prices = [row.get("price") for row in comps.get("table", []) if isinstance(row.get("price"), (int, float))]
+    cv = price_cv(prices) if prices else None
+    insufficient = bool(n.get("insufficient_data")) or n_comp < MIN_COMPS or (
+        cv is not None and cv > MAX_COMP_PRICE_CV)
+    return lo, hi, insufficient
+
+
 def build_pitch_prompt(lead: dict, audit: dict) -> str:
     t = audit.get("target", {})
     n = audit.get("estimate", {}).get("numbers", {})
     fixes = audit.get("top_fixes", [])[:3]
     listing_id = audit.get("listing_id") or t.get("id")
     neighbourhood = t.get("neighbourhood_cleansed") or "Austin"
+    lo, hi, insufficient = audit_range(audit)
+    if insufficient:
+        figure_line = ("INSUFFICIENT DATA — the public comps are too thin to price any figure. "
+                       "Do NOT quote any revenue number in the email.")
+    elif lo is not None and hi is not None:
+        figure_line = f"an estimated ${min(lo, hi):,.0f} to ${max(lo, hi):,.0f} per year (a conservative range from public data — say 'estimate')"
+    else:
+        figure_line = "unavailable (occupancy/revenue signal missing) — quote no figure"
 
     fix_lines = "\n".join(f"- {f}" for f in fixes) or "- (no fixes flagged)"
     return f"""Write the outreach email for this host, from the brief below — nothing else.
@@ -137,18 +164,15 @@ HOST
 - Reviews: {t.get('number_of_reviews')} total, last review: {t.get('last_review')}
 
 WHAT THE AUDIT FOUND (every figure below is an ESTIMATE from the audit — say so)
-- Estimated annual gap vs the comp-median revenue (Inside Airbnb model): {_money(n.get('est_annual_ia_revenue_gap'))} per year
-- Estimated annual gap from price positioning: {_money(n.get('est_annual_price_gap'))} per year
-- Their listing's modelled revenue: {_money(n.get('target_estimated_revenue_l365d'))} per year
-- Comp-median modelled revenue: {_money(n.get('comp_median_estimated_revenue_l365d'))} per year
-- Comp median price: {_money(n.get('comp_median_price'))}/night
+- Estimated annual upside: {figure_line}
 
 TOP FIXES FROM THE AUDIT (in priority order)
 {fix_lines}
 
 INSTRUCTIONS
 - Open with one sentence showing you looked at their actual listing (use its name naturally).
-- One or two sentences on the estimated gap — always with the word 'estimate'.
+- One or two sentences on the estimated upside — quote ONLY the figure line above, always with the word 'estimate'.
+  If it says INSUFFICIENT DATA, do not quote any revenue figure at all.
 - Suggest the single highest-impact fix from the list.
 - Close with one sentence asking for a 20-minute call this week to walk through the audit.
 - Do not mention Inside Airbnb by name; say 'public listing data' instead.
@@ -158,20 +182,21 @@ INSTRUCTIONS
 def fallback_pitch(lead: dict, audit: dict) -> str:
     """Deterministic body when no LLM is available — audit dict only, no invention."""
     t = audit.get("target", {})
-    n = audit.get("estimate", {}).get("numbers", {})
     fixes = audit.get("top_fixes") or []
     fix_one = fixes[0] if fixes else "tighten the basics on the listing"
     name = first_name(lead.get("host_name"))
     listing = t.get("name") or "your listing"
-    gap = n.get("est_annual_ia_revenue_gap")
-    gap_line = (f"the gap vs the comp-median modelled revenue pencils out at an estimated "
-                f"{_money(gap)} per year" if isinstance(gap, (int, float))
-                else "there is an estimated revenue gap against the comp set")
+    lo, hi, insufficient = audit_range(audit)
+    if insufficient or lo is None:
+        gap_line = ("the public data is too thin to responsibly put a number on your upside, "
+                    "so I won't quote one")
+    else:
+        gap_line = (f"the upside pencils out at an estimated ${min(lo, hi):,.0f} to "
+                    f"${max(lo, hi):,.0f} per year (an estimate from public data, not a guarantee)")
     return (
         f"Hi {name} — I found your {t.get('room_type', 'listing').lower()} "
         f"\"{listing}\" in the public listing data and ran the numbers.\n\n"
-        f"{gap_line} (an estimate from public data, not a guarantee — the method is attached "
-        f"to the audit). The first thing I would fix: {fix_one}\n\n"
+        f"{gap_line}. The first thing I would fix: {fix_one}\n\n"
         f"If you want, I can walk you through the audit on a quick 20-minute call this week — "
         f"no pitch beyond that. Worst case you keep the findings."
     )

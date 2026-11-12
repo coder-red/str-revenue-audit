@@ -16,12 +16,32 @@ Our own logic (rule 5). We compute two complementary, honest numbers:
 
 We do NOT invent per-signal dollar impacts — no public dataset supports that.
 Signals drive the fixes; the two numbers above are the only revenue figures.
+
+Since 2026-11-12 the headline is a CONSERVATIVE RANGE (min→max of the two gaps),
+not a single figure — single numbers from noisy public data over-promise. If the
+comp set is too thin or too dissimilar, we say INSUFFICIENT DATA instead of
+quoting a figure at all:
+  * n comps < MIN_COMPS (8)      -> insufficient
+  * comp price coefficient of variation (stdev / median) > MAX_COMP_PRICE_CV -> insufficient
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+
+MIN_COMPS = 8                # below this the comp set is anecdote, not evidence
+MAX_COMP_PRICE_CV = 0.6      # stdev(price) / median(price) above this = comps too dissimilar
+
+
+def price_cv(prices) -> float | None:
+    """stdev(price) / median(price). None when there's nothing to compute on."""
+    import statistics
+    vals = [float(p) for p in prices if p is not None]
+    if len(vals) < 2:
+        return None
+    med = statistics.median(vals)
+    return statistics.stdev(vals) / med if med else None
 
 
 def _comp_occupancy(comps: pd.DataFrame) -> tuple[float | None, str]:
@@ -54,6 +74,21 @@ def estimate_gap(target: pd.Series, comps: pd.DataFrame) -> dict:
     if comp_median_rev is not None and target_ia_rev is not None:
         ia_gap = comp_median_rev - target_ia_rev
 
+    # --- conservative-range / insufficient-data decision (2026-11-12) ------------
+    prices = comps["price"].dropna()
+    cv = price_cv(prices) or 0.0
+    insufficient_reason = None
+    if len(comps) < MIN_COMPS:
+        insufficient_reason = f"only {len(comps)} comparable listings (need ≥ {MIN_COMPS})"
+    elif cv > MAX_COMP_PRICE_CV:
+        insufficient_reason = (f"comp prices too dissimilar (stdev/median = {cv:.2f} "
+                               f"> {MAX_COMP_PRICE_CV})")
+    gap_values = [g for g in (price_gap, ia_gap) if g is not None]
+    gap_low = gap_high = None
+    if insufficient_reason is None and gap_values:
+        gap_low, gap_high = min(gap_values), max(gap_values)
+    insufficient_data = insufficient_reason is not None
+
     numbers = {
         "comp_median_price": round(comp_median_price, 2) if comp_median_price else None,
         "comp_avg_occupancy": round(occ, 3) if occ is not None else None,
@@ -65,6 +100,12 @@ def estimate_gap(target: pd.Series, comps: pd.DataFrame) -> dict:
         "target_estimated_revenue_l365d": round(target_ia_rev) if target_ia_rev is not None else None,
         "comp_median_estimated_revenue_l365d": round(comp_median_rev) if comp_median_rev is not None else None,
         "est_annual_ia_revenue_gap": round(ia_gap) if ia_gap is not None else None,
+        # 2026-11-12: headline is the range (min→max of the two gaps), not a single figure.
+        "est_gap_low": round(gap_low) if gap_low is not None else None,
+        "est_gap_high": round(gap_high) if gap_high is not None else None,
+        "insufficient_data": bool(insufficient_data),
+        "insufficient_reason": insufficient_reason,
+        "comp_price_cv": round(cv, 3),
     }
 
     method = [
@@ -78,6 +119,10 @@ def estimate_gap(target: pd.Series, comps: pd.DataFrame) -> dict:
         f"(> $0 est. annual revenue; n = {comp_rev_n}) − target estimated_revenue_l365d"
         + (f" = {comp_median_rev:,.0f} − {target_ia_rev:,.0f} = ${ia_gap:,.0f}/yr"
            if ia_gap is not None else " (unavailable: fewer than 3 active comps with est. revenue)"),
+        (f"INSUFFICIENT DATA — {insufficient_reason}. No figure is quoted." if insufficient_reason else
+         (f"conservative range: ${gap_low:,.0f} – ${gap_high:,.0f} per year (A → B). ESTIMATE from public data."
+          if gap_low is not None else
+          "Neither gap could be computed — occupancy or revenue signal unavailable. No figure is quoted.")),
         "Both are ESTIMATES, not booked revenue. Actuals depend on seasonality, blocked nights, "
         "fees, and listing quality. Use as directional sizing, not as an invoice.",
     ]

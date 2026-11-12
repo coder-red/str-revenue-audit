@@ -20,16 +20,13 @@ def _audit():
             "last_review": "2026-09-01", "availability_365": 150,
         },
         "comps": {
-            "n": 2, "pool": "neighbourhood", "median_price": 200.0,
+            "n": 8, "pool": "neighbourhood", "median_price": 200.0,
             "table": [
-                {"rank": 1, "id": 1, "neighbourhood_cleansed": "78704",
+                {"rank": i + 1, "id": i + 1, "neighbourhood_cleansed": "78704",
                  "room_type": "Entire home/apt", "bedrooms": 2.0, "beds": 2.0, "baths": 1.0,
-                 "price": 195.0, "availability_365": 200, "number_of_reviews": 30,
-                 "estimated_revenue_l365d": 44000, "last_review": "2026-09-01"},
-                {"rank": 2, "id": 2, "neighbourhood_cleansed": "78704",
-                 "room_type": "Entire home/apt", "bedrooms": 2.0, "beds": 2.0, "baths": 1.0,
-                 "price": 205.0, "availability_365": 220, "number_of_reviews": 25,
-                 "estimated_revenue_l365d": 53000, "last_review": "2026-08-30"},
+                 "price": 195.0 + i, "availability_365": 200, "number_of_reviews": 30,
+                 "estimated_revenue_l365d": 44000, "last_review": "2026-09-01"}
+                for i in range(8)
             ],
         },
         "signals": [
@@ -59,11 +56,21 @@ def _audit():
 def test_render_html_contains_estimates_and_escapes():
     html = render_html(_audit(), chart_b64=None)
     assert "ESTIMATE" in html
-    assert "+$4,380" in html
-    assert "ESTIMATE A" in html
+    assert "+$4,380 → +$18,500" in html          # headline is now the conservative range
     assert "&lt;script&gt;" in html          # name is escaped
     assert "<script>" not in html
     assert "Line one.<br>Line two." in html  # summary newlines → <br>
+
+
+def test_insufficient_data_when_too_few_comps():
+    audit = _audit()
+    audit["comps"] = {**audit["comps"], "n": 3, "table": audit["comps"]["table"][:3]}
+    audit["estimate"]["numbers"] = {**audit["estimate"]["numbers"],
+                                    "insufficient_data": True,
+                                    "insufficient_reason": "only 3 comparable listings (need ≥ 8)"}
+    html = render_html(audit, chart_b64=None)
+    assert "INSUFFICIENT DATA" in html
+    assert "+$4,380 → +$18,500" not in html
 
 
 def test_render_pdf_bytes():
@@ -77,3 +84,5 @@ def test_build_view_sign_handling():
     assert view["est_a"] == "+$4,380"
     assert view["est_b"] == "+$18,500"
     assert view["est_b_negative"] is False
+    assert view["insufficient_data"] is False
+    assert view["gap_range"] == "+$4,380 → +$18,500"

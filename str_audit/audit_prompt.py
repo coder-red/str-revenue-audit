@@ -26,6 +26,14 @@ def build_summary_prompt(audit: dict) -> str:
     def money(v):
         return f"${v:,.0f}" if isinstance(v, (int, float)) and v is not None else "n/a"
 
+    lo, hi = n.get("est_gap_low"), n.get("est_gap_high")
+    if n.get("insufficient_data"):
+        gap_range = f"INSUFFICIENT DATA — {n.get('insufficient_reason') or 'too few similar comps'}. Do not quote any figure."
+    elif lo is not None and hi is not None:
+        gap_range = f"{money(lo)} to {money(hi)} per year (ESTIMATE from public data)"
+    else:
+        gap_range = "unavailable — occupancy or revenue signal missing"
+
     return f"""Write the audit summary for this listing.
 
 LISTING
@@ -39,6 +47,7 @@ COMP SET (n={c.get('n')}, pool: {c.get('pool')})
 - Comp median est. annual revenue (Inside Airbnb model): {money(n.get('comp_median_estimated_revenue_l365d'))}
 
 REVENUE GAP (all figures are ESTIMATES, method printed on the PDF)
+- Conservative range for the annual upside (A → B): {gap_range}
 - Estimated annual gap from price positioning: {money(n.get('est_annual_price_gap'))}
 - Estimated annual gap vs comp median revenue (Inside Airbnb model): {money(n.get('est_annual_ia_revenue_gap'))}
 - Inside Airbnb's estimate of this listing's annual revenue: {money(n.get('target_estimated_revenue_l365d'))}
@@ -52,5 +61,5 @@ TOP FIXES (in order)
 INSTRUCTIONS
 - Open with one sentence: the single biggest problem in plain English.
 - Then 2-4 short bullets: the fixes, each tied to what it means for bookings or rate.
-- Close with one sentence naming the estimated annual upside "vs the comp median" figure exactly as given, and state clearly that it is an estimate, not a guarantee. Do not substitute the price-positioning figure for it.
+- Close with one sentence naming the conservative range of estimated annual upside (the “A → B” range) exactly as given, and state clearly that it is an estimate from public data, not a guarantee. If no range is available (insufficient data), say the public data was too thin to quote a figure and do not quote one. Do not substitute a single figure for the range.
 - Do not add any other numbers. Do not use markdown headers."""

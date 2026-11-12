@@ -27,6 +27,9 @@ body { font-family: DejaVuSerif; font-size: 8.2pt; color: #232323; line-height: 
 .ribbon { background: #fdf3dd; border-top: 1pt solid #d97706; border-bottom: 1pt solid #d97706;
           padding: 2.5px 10px; font-family: DejaVuSansBold; font-size: 6.3pt;
           letter-spacing: 1.6pt; color: #92400e; text-align: center; margin-bottom: 8px; }
+/* ---------- sample banner (public-safe sample render) ---------- */
+.samplebanner { background: #b91c1c; color: #ffffff; padding: 3pt 10px; font-family: DejaVuSansBold;
+                font-size: 7pt; letter-spacing: 1.2pt; text-align: center; margin-bottom: 6px; }
 
 /* ---------- hero: two big numbers ---------- */
 .hero { width: 100%; margin-bottom: 4px; }
@@ -96,22 +99,30 @@ body { font-family: DejaVuSerif; font-size: 8.2pt; color: #232323; line-height: 
 <div class="listing-name">{{ view.listing_name }}</div>
 <div class="listing-meta">{{ view.listing_meta }}</div>
 
+{% if view.sample_banner %}
+<div class="samplebanner">SAMPLE — BASED ON PUBLIC INSIDE AIRBNB DATA — ESTIMATES ONLY · LISTING IDENTITY &amp; EXACT LOCATION REMOVED</div>
+{% endif %}
 <!-- ESTIMATE RIBBON -->
-<div class="ribbon">All revenue figures on this page are ESTIMATES — method printed below</div>
+<div class="ribbon">All revenue figures on this page are ESTIMATES - method printed below</div>
 
 <!-- HERO NUMBERS -->
+{% if view.insufficient_data %}
 <table class="hero"><tr>
-  <td>
-    <div class="num{% if view.est_a_negative %} neg{% endif %}">{{ view.est_a }}</div>
-    <div class="cap">ESTIMATE A — Price positioning gap</div>
-    <div class="foot">(comp median ${{ view.comp_price }} − your ${{ view.price }}) × {{ view.occupancy }} occupancy × 365 nights</div>
-  </td>
-  <td>
-    <div class="num{% if view.est_b_negative %} neg{% endif %}">{{ view.est_b }}</div>
-    <div class="cap">ESTIMATE B — vs comp median revenue*</div>
-    <div class="foot">Inside Airbnb model: comp median {{ view.comp_ia_rev }}* minus this listing's {{ view.target_ia_rev }}* · active comps only (n={{ view.active_comps_n }})</div>
+  <td style="width:100%">
+    <div class="num" style="font-size:19pt">INSUFFICIENT DATA</div>
+    <div class="cap">Not enough evidence to quote an upside figure</div>
+    <div class="foot">{{ view.insufficient_reason }}. With a set this thin we do not guess — the fixes above still apply.</div>
   </td>
 </tr></table>
+{% else %}
+<table class="hero"><tr>
+  <td style="width:100%">
+    <div class="num">{{ view.gap_range }}<span style="font-size:11pt"> /yr</span></div>
+    <div class="cap">ESTIMATED UPSIDE VS THE COMP SET — a range, not a single figure, ESTIMATE from public data</div>
+    <div class="foot">Conservative (price repriced only, ESTIMATE A: {{ view.est_a }}) → full comp-median gap (Inside Airbnb model, ESTIMATE B: {{ view.est_b }}). Public data, modelled, not a guarantee or an invoice.</div>
+  </td>
+</tr></table>
+{% endif %}
 
 <table class="chips"><tr>
   <td><b>${{ view.price }}</b><br>your nightly price</td>
@@ -163,7 +174,7 @@ body { font-family: DejaVuSerif; font-size: 8.2pt; color: #232323; line-height: 
 
 <!-- FOOTER -->
 <div class="footbar">
-  *ESTIMATE — Inside Airbnb's own model (estimated_revenue_l365d), not booked revenue. Both gaps above are directional sizing, not a guarantee or an invoice.
+  *ESTIMATE - Inside Airbnb's own model (estimated_revenue_l365d), not booked revenue. Figures above are directional sizing, not a guarantee or an invoice.
   Comp median uses medians throughout. Occupancy blends booked and blocked nights.<br>
   Data: Inside Airbnb, Austin TX snapshot 2026-09-17 (<b>CC BY 4.0</b>, attribution required — please credit Inside Airbnb).
   Generated {{ view.generated_at }} · Page 1 of 1 · STR Revenue Audit
