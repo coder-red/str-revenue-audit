@@ -23,6 +23,7 @@ The tool's job: show a property manager the gap and the top fixes, honestly labe
 - [x] Phase 1 — Pipeline: load one metro, build a comps table for a single listing
 - [x] Phase 2 — Audit signals + revenue-gap estimate + LLM summary (Gemini/Groq free tier, offline fallback)
 - [x] Phase 3 — One-page PDF (xhtml2pdf) + Streamlit app (look up / enter / upload a listing, download PDF)
+- [x] Phase 4 — STR Owner Lead Finder: host-level lead scoring → audits on weakest listings → LLM pitch drafts → review queue + CSV export (see below)
 
 ## Data source & attribution
 
@@ -88,6 +89,48 @@ from the audit dict — no invented numbers, works offline. Prompt lives in
 `str_audit/audit_prompt.py`; every call is wrapped so any API failure degrades
 to the fallback instead of crashing.
 
+## STR Owner Lead Finder (Phase 4)
+
+From the same Inside Airbnb Austin snapshot, find the hosts who likely need a property
+manager, audit their weakest listing, draft a personalized outreach email, and queue
+it for **your** review. There is **no send button anywhere** — output is an approval
+queue and a CSV you send from your own mailbox.
+
+Flow: `score → audit weakest listing → draft pitch → review → approve → export CSV`
+
+```bash
+python scripts/score_leads.py                # Phase 1: score all hosts (upserts into data/leads.db)
+python scripts/score_leads.py --audit 10     # Phase 2: audit weakest listing of top 10
+python scripts/score_leads.py --pitch 10     # Phase 3: draft pitches for those 10
+streamlit run leadfinder_app.py              # Phase 4: review queue → approve/reject → CSV export
+```
+
+- **Lead score** (`str_leads/score.py`, custom, v1.0, max 14): transparent weighted points —
+  multi-listing portfolio, listings priced ≥10% below the neighbourhood median, stale/missing
+  reviews, thin description, bottom-tercile modelled revenue, not a superhost. Reasons are
+  stored per lead and shown in the UI. Likely agencies (calculated metro-wide listings ≥ 15,
+  or company-like name tokens) are excluded; `--include-agencies` overrides.
+- **Audits** (`str_leads/audit_bridge.py`): reuses `str_audit.audit.run_audit` untouched on each
+  lead's weakest listing; the audit JSON path + ESTIMATE gaps are linked from the leads DB.
+- **Pitches** (`str_leads/pitch.py`, custom): the LLM only fills the body from an allow-listed
+  brief of audit facts; the subject is deterministic; the sender block and opt-out line are
+  appended in code and verified by `can_spam_ok()`. Figures quoted are always the audit's
+  ESTIMATE figures, labeled as such. Offline deterministic fallback when no LLM key.
+- **Store** (`str_leads/store.py`): SQLite (`data/leads.db`, gitignored). `host_id` is the
+  dedupe key; re-running the scorer refreshes scores, never your statuses/notes/contacts.
+  Status flow: `new → approved | rejected → sent → replied → meeting`, plus
+  `no_contact` and `do_not_contact`.
+- **Contact discovery is manual and public-info only**: the app captures the source URL of
+  whatever you find (host website, business listing, county records). If no public contact
+  exists, mark the lead `no contact` and move on. No guessing, no purchased lists.
+- **CAN-SPAM**: drafts are flagged **not sendable** until `SENDER_NAME`, `SENDER_BUSINESS`
+  and `SENDER_POSTAL_ADDRESS` are set in `.env` (every commercial email needs sender
+  identity + a physical postal address + a working opt-out line — all are enforced by the
+  review UI and flagged in the CSV export).
+
+Snapshot note: the Austin 2026-09-17 file ships `host_since` and `host_response_rate` as
+100% NULL (Inside Airbnb removed them) — those two weights never fire on this data.
+
 ## Deploy
 
 **Live:** app — <https://str-revenue-audit.onrender.com> · landing page — <https://str-revenue-audit-site.onrender.com>
@@ -145,6 +188,14 @@ on Linux/macOS unchanged. See `CREDITS.md`.
 | `str_audit/audit.py` | Phase 2 orchestrator: listing → comps → signals → estimate → summary; prints the report and writes `outputs/audit_<id>.json`. (Phase 3 renders the same dict to PDF.) |
 | `tests/` | pytest smoke tests on synthetic data — no network. `python -m pytest tests/ -v` |
 | `outputs/` | Generated artefacts (gitignored). |
+| `scripts/score_leads.py` | Lead-finder pipeline driver (Phases 1–3): score → upsert → audit top-N → draft pitches. Read-only over the snapshot; writes `data/leads.db`. |
+| `leadfinder_app.py` | Streamlit review queue (Phase 4): pick a lead → read audit → edit draft → approve/reject/track → CSV export. No send path. |
+| `str_leads/data.py` | Host-level aggregation from the raw snapshot via DuckDB (host_id … host_url), joined onto `str_audit.data.load_listings` facts. Project 1 loader untouched. |
+| `str_leads/score.py` | The custom lead score (rule 7): weighted points + human-readable reasons, agency exclusion, v1.0. |
+| `str_leads/audit_bridge.py` | Audits each lead's weakest listing via `str_audit.audit.run_audit` (untouched); writes `outputs/audit_<id>.json`; links it in `leads.db`. |
+| `str_leads/pitch.py` | The custom pitch prompt + Jinja-free assembly: deterministic subject, LLM body (allow-listed brief), sender block + opt-out appended in code, `can_spam_ok()` gate. |
+| `str_leads/store.py` | SQLite dedupe/status tracking (rule 7) — `host_id` PK; refresh-score-only upserts; CSV export. |
+| `docs/phase0-lead-finder.md` | Phase 0 research: library options per category, licenses, contact-discovery limits. |
 
 ## License
 

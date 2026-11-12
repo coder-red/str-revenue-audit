@@ -2,7 +2,7 @@
 
 Rule: only MIT / Apache-2.0 / BSD-licensed material is reused. Anything GPL,
 LGPL, unlicensed, or "license unclear" was **not** reused — see the bottom section.
-Last updated: 2026-11-11 (Phases 1–3).
+Last updated: 2026-11-12 (Phases 1–4; STR Owner Lead Finder).
 
 ## Reused / depended on (code)
 
@@ -31,6 +31,29 @@ WeasyPrint unchanged on Linux/macOS. Both engines are reused, not copied.
 | Project | License | What we took |
 |---|---|---|
 | **streamlit/example-app-pdf-report** | Apache-2.0 | The pattern: Streamlit app → generate PDF → `st.download_button`. No code copied; rewritten for this product. |
+
+## STR Owner Lead Finder (Phases 1–4) — what we reused, took, and rejected
+
+Reused unchanged: `str_audit` package (audit, comps, signals, revenue, report, llm),
+Jinja2 (BSD-3), Streamlit (Apache-2.0), DuckDB (MIT), scikit-learn (BSD-3), pandas (BSD-3),
+`sqlite3` stdlib, `csv`/`json` stdlib. **No new runtime dependencies were added.**
+`str_audit/llm.py` gained one public function (`generate_text`) and an optional `system`
+parameter; it also now passes the system prompt to Gemini as well (documented in git history).
+
+| Option considered | License | Decision |
+|---|---|---|
+| Streamlit `st.data_editor` (built-in) | Apache-2.0 | Used only via built-ins (`st.tabs`, `st.selectbox`, `st.text_area`, `st.download_button`) |
+| `streamlit-aggrid` 1.2.1.post2 (wraps ag-grid Community) | MIT | Evaluated, **not used** — built-ins suffice |
+| MJML (`mjmlio/mjml`, npm 5.4.1, pushed 2026-11-10) | MIT | Rejected — Node toolchain; LLM drafts stay plain-text |
+| React Email (`resend/react-email`, ~20k stars) | MIT | Rejected — Node/TS, wrong stack |
+| Mautic | GPL / NOASSERTION | Excluded by license rule |
+| `mjml-python` 1.4.2 | No license | Excluded by license rule |
+| `premailer` | PSF license (outside allowed set), stale since 2021 | Excluded |
+| `email-validator` | Unlicense | Excluded by license rule |
+| `PyCaret` 3.3.2 | MIT | Rejected — no conversion labels; kills explainability |
+| Lead-scoring repos found on GitHub (case-study notebooks; `Astoriel/LeadGenius`; `buildingopen/opengtm` — MIT but heavy B2B-SaaS) | MIT / none | None reused; the lead score is custom (rule 7) |
+| Streamlit approval-queue POC repos (`lat35n-hrt/streamlit_approval_workflow_poc`, `kajarenc/human-in-the-loop-streamlit`) | **No license** | Reference only; never copied |
+| Our own new code: `str_leads/` (score, pitch, store, data, audit_bridge), `leadfinder_app.py`, `scripts/score_leads.py` | MIT | Ours |
 
 ## Dev-only tools (not shipped)
 
@@ -64,3 +87,6 @@ WeasyPrint unchanged on Linux/macOS. Both engines are reused, not copied.
 - `str_audit/` — Inside Airbnb field normalisation, comp-matching rules, (Phase 2)
   audit signals: weak photos/description, review recency, price vs neighbourhood median,
   revenue-gap estimate, and the audit-summary prompt. MIT.
+- `str_leads/` — host-level aggregation, the custom lead score, the pitch-drafting
+  prompt/assembly, and the SQLite dedupe/status store. MIT.
+- `leadfinder_app.py`, `scripts/score_leads.py` — review queue UI and pipeline driver. MIT.
