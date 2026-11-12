@@ -29,8 +29,8 @@ _AUDIT = {
     "top_fixes": ["Reprice toward the comp median.", "Rewrite the description."],
 }
 
-_LEAD = {"host_id": 7363313, "host_name": "Macy Ray", "n_listings": 12,
-         "reasons": ["+3 — 12 listings"], "weakest_listing_id": 1013186812093487861}
+_LEAD = {"host_id": 123456789, "host_name": "Sue North", "n_listings": 12,
+         "reasons": ["+3 — 12 listings"], "weakest_listing_id": 987654321}
 
 
 @pytest.fixture(autouse=True)
@@ -81,7 +81,7 @@ def test_missing_opt_out_detected(monkeypatch):
     monkeypatch.setenv("SENDER_NAME", "Casey Manager")
     monkeypatch.setenv("SENDER_BUSINESS", "ATX Stays Co")
     monkeypatch.setenv("SENDER_POSTAL_ADDRESS", "123 Congress Ave, Austin, TX 78701")
-    body = "Hi Macy — quick note.\n\n— Casey Manager, ATX Stays Co\n123 Congress Ave, Austin, TX 78701"
+    body = "Hi Sue — quick note.\n\n— Casey Manager, ATX Stays Co\n123 Congress Ave, Austin, TX 78701"
     ok, problems = pitch.can_spam_ok("s", body)
     assert not ok
     assert any("opt-out" in p for p in problems)
@@ -98,8 +98,8 @@ def test_placeholder_body_detected(monkeypatch):
 
 
 def test_first_name_and_subject_deterministic():
-    assert pitch.first_name("Macy Ray") == "Macy"
+    assert pitch.first_name("Sue Ray") == "Sue"
     assert pitch.first_name(None) == "there"
     assert pitch.first_name("  ") == "there"
     subj = pitch.build_subject(_LEAD)
-    assert "12" in subj and "Macy" in subj
+    assert "12" in subj and "Sue" in subj
