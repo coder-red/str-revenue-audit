@@ -71,9 +71,12 @@ weak photos (user-entered count only; public data has none → reported `unknown
 thin description (<60 words), review recency (stale after 180 days; 0 reviews = fail),
 price vs comp median (>10% off = flag).
 
-Revenue numbers — **both are ESTIMATES with formulas printed**:
+Both revenue numbers — **always labeled ESTIMATES with formulas printed**, and the headline
+is now a **conservative range** (A → B), never a single figure:
 - **A, price positioning:** `(comp_median_price − target_price) × comp_avg_occupancy × 365`
 - **B, Inside Airbnb model:** `median(comp estimated_revenue_l365d, active comps only) − target's`
+- If comps are too thin (**n < 8**) or too dissimilar (stdev/median of comp prices **> 0.6**), the
+  report and the pitch drafts say **INSUFFICIENT DATA** and quote nothing.
 
 ### LLM summary (optional — works without keys)
 
@@ -106,11 +109,15 @@ python scripts/score_leads.py --pitch 10     # Phase 3: draft pitches for those 
 streamlit run leadfinder_app.py              # Phase 4: review queue → approve/reject → CSV export
 ```
 
-- **Lead score** (`str_leads/score.py`, custom, v1.0, max 14): transparent weighted points —
-  multi-listing portfolio, listings priced ≥10% below the neighbourhood median, stale/missing
-  reviews, thin description, bottom-tercile modelled revenue, not a superhost. Reasons are
-  stored per lead and shown in the UI. Likely agencies (calculated metro-wide listings ≥ 15,
+- **Lead score** (`str_leads/score.py`, custom, v2.0, max 16): transparent weighted points,
+  tuned toward small self-managing owners (roughly 1–4 listings) with weak listings —
+  stale/missing reviews (+3), price ≥10% below the neighbourhood median (+3), thin description
+  (+2), bottom-tercile modelled revenue (+2), portfolio of 2 (+2, plus +1 for the 3–4 sweet
+  spot, capped at 5+), not a superhost (+1). Reasons are stored per lead and shown in the UI.
+  Likely agencies (calculated metro-wide listings ≥ 5 — configurable with `--agency-cutoff`,
   or company-like name tokens) are excluded; `--include-agencies` overrides.
+  **Note:** re-scoring does not happen silently — run `python scripts/score_leads.py` yourself
+  to refresh the DB (it upserts scores only; statuses/contacts/notes are preserved).
 - **Audits** (`str_leads/audit_bridge.py`): reuses `str_audit.audit.run_audit` untouched on each
   lead's weakest listing; the audit JSON path + ESTIMATE gaps are linked from the leads DB.
 - **Pitches** (`str_leads/pitch.py`, custom): the LLM only fills the body from an allow-listed
@@ -124,6 +131,9 @@ streamlit run leadfinder_app.py              # Phase 4: review queue → approve
 - **Contact discovery is manual and public-info only**: the app captures the source URL of
   whatever you find (host website, business listing, county records). If no public contact
   exists, mark the lead `no contact` and move on. No guessing, no purchased lists.
+  The **Contact research** panel records host website, source URL, `contact found` (yes /
+  no / not found) and notes per lead, the sidebar shows the running found-rate, and the
+  Export tab offers a **Leads needing contact research** CSV of unresearched, active leads.
 - **CAN-SPAM**: drafts are flagged **not sendable** until `SENDER_NAME`, `SENDER_BUSINESS`
   and `SENDER_POSTAL_ADDRESS` are set in `.env` (every commercial email needs sender
   identity + a physical postal address + a working opt-out line — all are enforced by the

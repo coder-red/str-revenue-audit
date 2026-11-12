@@ -40,6 +40,12 @@ Jinja2 (BSD-3), Streamlit (Apache-2.0), DuckDB (MIT), scikit-learn (BSD-3), pand
 `str_audit/llm.py` gained one public function (`generate_text`) and an optional `system`
 parameter; it also now passes the system prompt to Gemini as well (documented in git history).
 
+Round 2 (2026-11-12) added, with **no new dependencies**: score v2.0 (re-weighted toward
+small self-managing owners; agency cutoff configurable), conservative-range/INSUFFICIENT-DATA
+revenue headline, manual contact-research fields + CSV export + found-rate stat, anonymized
+`docs/sample_audit.pdf`, and re-rendered public screenshots (identity removed). Web research
+(site/, docs/) reuses nothing beyond the previous phase's assets.
+
 | Option considered | License | Decision |
 |---|---|---|
 | Streamlit `st.data_editor` (built-in) | Apache-2.0 | Used only via built-ins (`st.tabs`, `st.selectbox`, `st.text_area`, `st.download_button`) |
