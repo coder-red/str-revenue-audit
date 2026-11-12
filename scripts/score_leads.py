@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from str_leads import pitch as pitch_mod
 from str_leads import store
 from str_leads.audit_bridge import audit_top_leads
 from str_leads.data import build_host_table
@@ -46,6 +47,10 @@ def main() -> int:
                     help="LLM provider (default: LLM_PROVIDER from .env; 'none' = offline fallback)")
     ap.add_argument("--force-audit", action="store_true",
                     help="re-audit hosts that already have an audit on file")
+    ap.add_argument("--pitch", type=int, default=0, metavar="N",
+                    help="draft outreach pitches for the top N hosts (needs an audit on file)")
+    ap.add_argument("--force-pitch", action="store_true",
+                    help="re-draft pitches for hosts that already have one")
     args = ap.parse_args()
 
     print("Loading snapshot and building host table…")
@@ -97,6 +102,35 @@ def main() -> int:
                       f"(est. gap vs comp-median: {gap_s})")
             else:
                 print(f"  host {r['host_id']}: FAILED — {r.get('error')}")
+
+    if args.pitch > 0:
+        provider = None if args.provider in (None, "none") else args.provider
+        candidate_ids = [int(x) for x in ranked.head(max(args.audit, args.pitch))["host_id"]]
+        print(f"\nDrafting pitches for top {args.pitch} hosts with an audit on file…")
+        done = 0
+        for host_id in candidate_ids:
+            if done >= args.pitch:
+                break
+            lead = store.get_lead(host_id, args.db)
+            if not lead:
+                continue
+            path = lead.get("audit_json_path")
+            if not path or not Path(path).exists():
+                continue  # not audited yet — skip silently, run with --audit first
+            if lead.get("pitch_body") and not args.force_pitch:
+                print(f"  host {host_id}: pitch already drafted, skipped (--force-pitch to redo)")
+                done += 1
+                continue
+            audit = pitch_mod.load_audit(path)
+            result = pitch_mod.generate_pitch(lead, audit, provider=provider)
+            store.update_lead(host_id, args.db,
+                              pitch_subject=result["subject"],
+                              pitch_body=result["body"],
+                              pitch_provider=result["provider_used"],
+                              can_spam_ok=1 if result["can_spam_ok"] else 0)
+            done += 1
+            flag = "OK" if result["can_spam_ok"] else f"NOT SENDABLE: {', '.join(result['can_spam_problems'])}"
+            print(f"  host {host_id}: pitch drafted ({result['provider_used']}) — {flag}")
 
     out = ranked.copy()
     out["reasons"] = out["reasons"].apply(lambda rs: " | ".join(rs))

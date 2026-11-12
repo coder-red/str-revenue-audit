@@ -58,21 +58,24 @@ def _fallback_summary(audit: dict) -> str:
     return f"{lead}\n{bullet_fixes}\n{tail}"
 
 
-def _gemini(prompt: str) -> str:
+def _gemini(prompt: str, system: str = SYSTEM) -> str:
     from google import genai  # lazy import — keeps Phase 1 usable without the SDK
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set")
     client = genai.Client(api_key=api_key)
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    resp = client.models.generate_content(model=model, contents=prompt)
+    resp = client.models.generate_content(
+        model=model,
+        contents=f"{system}\n\n{prompt}" if system else prompt,
+    )
     text = getattr(resp, "text", None)
     if not text:
         raise RuntimeError("empty response from Gemini")
     return text.strip()
 
 
-def _groq(prompt: str) -> str:
+def _groq(prompt: str, system: str = SYSTEM) -> str:
     from groq import Groq  # lazy import
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
@@ -81,7 +84,7 @@ def _groq(prompt: str) -> str:
     model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
     resp = client.chat.completions.create(
         model=model,
-        messages=[{"role": "system", "content": SYSTEM},
+        messages=[{"role": "system", "content": system},
                   {"role": "user", "content": prompt}],
         temperature=0.4,
         # Reasoning models (e.g. gpt-oss-*) spend most of the budget on hidden
@@ -94,17 +97,28 @@ def _groq(prompt: str) -> str:
     return text.strip()
 
 
+def generate_text(prompt: str, system: str | None = None,
+                  provider: str | None = None) -> tuple[str, str]:
+    """Call the configured provider. Raises on any failure — callers own their fallbacks.
+
+    Returns (text, provider_used). Added for str_leads.pitch; summarize_audit keeps
+    its historical never-raise behaviour by wrapping this.
+    """
+    provider = (provider or os.environ.get("LLM_PROVIDER", "gemini")).lower().strip()
+    system = system if system is not None else SYSTEM
+    fn = {"gemini": _gemini, "groq": _groq}.get(provider)
+    if fn is None:
+        raise RuntimeError(f"unknown LLM_PROVIDER={provider!r}")
+    return fn(prompt, system), provider
+
+
 def summarize_audit(audit: dict, provider: str | None = None) -> tuple[str, str]:
     """Return (summary_text, provider_used). Never raises — falls back deterministically."""
     prompt = build_summary_prompt(audit)
-    provider = (provider or os.environ.get("LLM_PROVIDER", "gemini")).lower().strip()
-
-    providers = {"gemini": _gemini, "groq": _groq}
-    fn = providers.get(provider)
-    if fn is not None:
-        try:
-            return fn(prompt), provider
-        except Exception as exc:  # noqa: BLE001 — we want any failure to degrade, not crash
-            fallback = _fallback_summary(audit)
-            return fallback, f"fallback ({provider} unavailable: {exc.__class__.__name__})"
-    return _fallback_summary(audit), f"fallback (unknown LLM_PROVIDER={provider!r})"
+    try:
+        return generate_text(prompt, SYSTEM, provider)
+    except Exception as exc:  # noqa: BLE001 — we want any failure to degrade, not crash
+        resolved = (provider or os.environ.get("LLM_PROVIDER", "gemini")).lower().strip()
+        if resolved in ("gemini", "groq"):
+            return _fallback_summary(audit), f"fallback ({resolved} unavailable: {exc.__class__.__name__})"
+        return _fallback_summary(audit), f"fallback (unknown LLM_PROVIDER={resolved!r})"
