@@ -109,8 +109,11 @@ def main() -> int:
 
     if args.pitch > 0:
         provider = None if args.provider in (None, "none") else args.provider
-        candidate_ids = [int(x) for x in ranked.head(max(args.audit, args.pitch))["host_id"]]
-        print(f"\nDrafting pitches for top {args.pitch} hosts with an audit on file…")
+        # Candidates = hosts with an audit on file (score desc from list_leads), NOT the
+        # current ranking — re-weighting the score must not orphan previously audited hosts.
+        audited = [d for d in store.list_leads(args.db) if d.get("audit_json_path")]
+        candidate_ids = [int(d["host_id"]) for d in audited[:args.pitch]]
+        print(f"\nDrafting pitches for {len(candidate_ids)} hosts that already have an audit on file…")
         done = 0
         for host_id in candidate_ids:
             if done >= args.pitch:
