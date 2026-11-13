@@ -162,10 +162,19 @@ The app has three entry points: **Inside Airbnb listing** (by id, e.g. the curat
 `21004527`), **Enter manually** (feeds the photo-count signal — public data has none),
 and **Upload CSV/JSON** (same fields as the manual form; sample template downloadable in-app).
 
-### Branding
-The PDF header and app title say **"STR Revenue Audit"** — rename in
-`templates/audit_report.html` (`.band-title`), `app.py` (`st.set_page_config`, `st.title`),
-and `.streamlit/config.toml`. PDF colours: `#10483c` green, `#d97706` amber, `#f4f1ea` bone.
+### What's on the page (and why a PM reads it)
+
+- **Verdict headline** — the conservative ESTIMATE range (price-positioning gap A → Inside Airbnb model gap B), or an explicit **INSUFFICIENT DATA** callout when the comp set is too thin/dissimilar. Never a bare number.
+- **Listing Health Score** — 0–100 composite of the four signals with the deduction formula printed (e.g. `70 — Solid but leaky; −25 review recency, −5 photos (unknown)`).
+- **Two ESTIMATE cards** (formulas printed) + comp occupancy / median / count chips + a P25/median/P75 price chart vs this listing.
+- **Signals → ranked fixes**, an LLM-written summary in plain English, the comps table, and the full calculation method in fine print.
+
+### Branding / white-label
+Set **`CLIENT_BRAND`** in the environment (Render → service → Environment, or locally) to stamp your client's brand on the masthead:
+
+    CLIENT_BRAND="Acme Property Group" python -m str_audit.report --listing-id 21004527
+
+Masthead becomes "ACME PROPERTY GROUP · POWERED BY STR REVENUE AUDIT" — your client's name on every page you hand over, our method credit in the footer. To rename the product default itself: `templates/audit_report.html` (`.wordmark`), `app.py`, `.streamlit/config.toml`. Palette: deep green `#0d3b31`, bone `#f4f1ea`, amber `#d97706`.
 
 ### PDF engine note
 WeasyPrint (Phase 0 pick) needs GTK/Pango system libraries this Windows machine lacks —

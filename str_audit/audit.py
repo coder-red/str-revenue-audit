@@ -22,6 +22,7 @@ import pandas as pd
 
 from str_audit.comps import DEFAULT_DATA, PROJECT_ROOT, build_comps, rank_comps
 from str_audit.data import load_listings
+from str_audit.health import health_score
 from str_audit.llm import summarize_audit
 from str_audit.revenue import estimate_gap
 from str_audit.signals import run_signals, top_fixes
@@ -88,6 +89,7 @@ def build_audit(target: pd.Series, comps: pd.DataFrame, pool_how: str,
         },
         "signals": signals,
         "top_fixes": top_fixes(signals),
+        "health": health_score(signals),
         "estimate": estimate,
     }
 
@@ -173,6 +175,9 @@ def _print_report(audit: dict) -> None:
     print("\n-- SIGNALS ---------------------------------------------------------------")
     for s in audit["signals"]:
         print(f"  [{s['status'].upper():7s}] {s['summary']}")
+    h = audit.get("health")
+    if h:
+        print(f"  Health score: {h['score']}/100 ({h['label']})  — formula printed on the PDF")
     print("\n-- ESTIMATED REVENUE GAP (all ESTIMATES, not booked revenue) -------------")
     if n["est_annual_price_gap"] is not None:
         print(f"  Price positioning gap:        ${n['est_annual_price_gap']:+,.0f} / yr")
