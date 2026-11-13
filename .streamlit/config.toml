@@ -8,3 +8,8 @@ font = "sans serif"
 
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"           # hide Deploy button / hamburger / fullscreen noise
+showErrorDetails = false
+showSidebarNavigation = false     # single-page app — no nav chrome

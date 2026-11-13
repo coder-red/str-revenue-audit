@@ -67,11 +67,16 @@ def signal_review_recency(target: pd.Series, today: date | None = None) -> dict:
     n_reviews = target.get("number_of_reviews")
     last = target.get("last_review")
 
-    if (pd.isna(n_reviews) or int(n_reviews) == 0) or pd.isna(last):
+    if (pd.isna(n_reviews) or int(n_reviews) == 0):
         return dict(key="review_recency", status="fail", value=None,
                     summary="No reviews yet",
                     detail="Zero reviews on record. No social proof = low conversion and low "
                            "search placement. Price to win first bookings, then harvest reviews.")
+    if pd.isna(last):
+        return dict(key="review_recency", status="unknown", value=None,
+                    summary=f"Last-review date missing ({int(n_reviews)} reviews on record)",
+                    detail="Review count is known but the last-review date isn't in this file. "
+                           "Enter the listing manually with the last review date for a freshness check.")
 
     days = (today - last.date()).days if hasattr(last, "date") else (today - last).days
     rpm = target.get("reviews_per_month")
