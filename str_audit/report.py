@@ -1,13 +1,11 @@
 """Render the audit dict to the one-page PDF (xhtml2pdf — no system deps).
 
-Phase 3. WeasyPrint was the approved pick but needs GTK/Pango system
-libraries that don't exist on this Windows machine; xhtml2pdf (Apache-2.0)
-was the pre-approved fallback and ships pure-Python. Fonts (DejaVu, see
-assets/fonts/README.txt) let the PDF embed a real typeface with full
-Latin coverage.
+Client-grade design: wordmark header, composite health score, two ESTIMATE
+cards, comp percentile chart, formula footer. White-label via CLIENT_BRAND
+(e.g. CLIENT_BRAND="Acme Property Group" stamps the client's name on the page).
 
 Usage:
-    python -m str_audit.report --listing-id 21004527
+    CLIENT_BRAND="Acme PM" python -m str_audit.report --listing-id 21004527
 """
 
 from __future__ import annotations
@@ -15,6 +13,7 @@ from __future__ import annotations
 import argparse
 import base64
 import html as _html
+import os
 import sys
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -22,12 +21,12 @@ from pathlib import Path
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from str_audit.revenue import MAX_COMP_PRICE_CV, MIN_COMPS, price_cv
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = PROJECT_ROOT / "templates"
 ASSETS_FONTS = PROJECT_ROOT / "assets" / "fonts"
 DEFAULT_OUT_DIR = PROJECT_ROOT / "outputs"
+
+DEFAULT_BRAND = "STR Revenue Audit"
 
 
 def _money(v, signed: bool = False) -> str:
@@ -54,66 +53,72 @@ def _int_or_dash(v) -> str:
 
 
 def make_chart_b64(audit: dict) -> str | None:
-    """Tiny horizontal bar: this listing vs comp median (ESTIMATE B inputs)."""
-    n = audit["estimate"]["numbers"]
-    target = n.get("target_estimated_revenue_l365d") or 0
-    comp = n.get("comp_median_estimated_revenue_l365d") or 0
-    if not (target or comp):
+    """Nightly price: target vs comp P25 / median / P75 — one glance."""
+    prices = [r.get("price") for r in audit.get("comps", {}).get("table", [])
+              if isinstance(r.get("price"), (int, float))]
+    target = audit["target"].get("price")
+    if len(prices) < 3 or target is None:
         return None
+    s = pd.Series(prices)
+    p25, p50, p75 = (float(s.quantile(q)) for q in (0.25, 0.5, 0.75))
+    labels = ["Comp median", "Comp P75", "Comp P25", "This listing"]
+    values = [p50, p75, p25, float(target)]
+    colors = ["#c8c4b8", "#c8c4b8", "#c8c4b8", "#10483c"]
     try:
         import plotly.graph_objects as go
 
         fig = go.Figure(go.Bar(
-            x=[target, comp],
-            y=["This listing", "Comp median"],
-            orientation="h",
-            marker_color=["#10483c", "#c8c4b8"],
-            text=[f"${target:,.0f}", f"${comp:,.0f}"],
+            x=values, y=labels, orientation="h",
+            marker_color=colors,
+            text=[f"${v:,.0f}" for v in values],
             textposition="outside",
             hoverinfo="skip",
         ))
         fig.update_layout(
-            margin=dict(l=4, r=10, t=2, b=2), height=110, width=720,
-            xaxis=dict(visible=False, range=[0, max(target, comp) * 1.18 or 1]),
-            yaxis=dict(autorange="reversed", showgrid=False, tickfont=dict(size=12)),
-            font=dict(family="DejaVu Sans", size=11, color="#232323"),
+            margin=dict(l=4, r=50, t=2, b=2), height=115, width=700,
+            xaxis=dict(visible=False, range=[0, max(values) * 1.16 or 1]),
+            yaxis=dict(showgrid=False, tickfont=dict(size=11, family="DejaVu Sans")),
+            font=dict(family="DejaVu Sans", size=10, color="#232323"),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             showlegend=False,
         )
         return base64.b64encode(fig.to_image(format="png", scale=2)).decode()
     except Exception:
-        return None  # chart is decoration; the PDF must render without it
+        return None
 
 
-def build_view(audit: dict, chart_b64: str | None = None, sample: bool = False) -> dict:
+def _verdict_sub(audit: dict) -> str:
+    """Supporting line, composed from data — headline itself is the conservative range."""
+    fixes = audit.get("top_fixes") or []
+    fails = [s for s in audit.get("signals", []) if s.get("status") == "fail"]
+    if fails:
+        first = fails[0]["key"].replace("_", " ")
+        return f"Biggest leak: {first}. " + (fixes[0] if fixes else "")
+    if fixes:
+        return "Biggest lever: " + fixes[0]
+    return "Listing is fundamentally healthy — tactical tuning only."
+
+
+def build_view(audit: dict, chart_b64: str | None = None) -> dict:
     t = audit["target"]
     c = audit["comps"]
     n = audit["estimate"]["numbers"]
+    health = audit.get("health") or {"score": None, "label": "n/a", "deductions": [], "formula": ""}
     gap_a, gap_b = n.get("est_annual_price_gap"), n.get("est_annual_ia_revenue_gap")
 
-    # --- 2026-11-12: headline is a conservative range, or INSUFFICIENT DATA ------
-    n_comps = c.get("n", 0) or 0
-    comp_prices = [row.get("price") for row in c.get("table", []) if isinstance(row.get("price"), (int, float))]
-    table_cv = price_cv(comp_prices)
-    computed_reason = None
-    if n_comps < MIN_COMPS:
-        computed_reason = f"only {n_comps} comparable listings (need ≥ {MIN_COMPS})"
-    elif table_cv is not None and table_cv > MAX_COMP_PRICE_CV:
-        computed_reason = (f"comp prices too dissimilar (stdev/median = {table_cv:.2f} "
-                           f"> {MAX_COMP_PRICE_CV})")
-    insufficient = bool(n.get("insufficient_data")) or computed_reason is not None
-    insufficient_reason = n.get("insufficient_reason") or computed_reason
+    # Conservative range (or INSUFFICIENT DATA) — the numbers dict carries the decision
+    # when the audit came from the pipeline; derive it for hand-built fixtures.
     lo, hi = n.get("est_gap_low"), n.get("est_gap_high")
-    if lo is None and not insufficient:
+    if lo is None:
         gaps = [g for g in (gap_a, gap_b) if isinstance(g, (int, float))]
-        if gaps:
-            lo, hi = min(gaps), max(gaps)
-    def _signed(v) -> str:
-        if v is None:
-            return "n/a"
-        sign = "+" if v >= 0 else "-"
-        return f"{sign}${abs(v):,.0f}"
-    gap_range = f"{_signed(lo)} → {_signed(hi)}" if (lo is not None and hi is not None) else None
+        lo, hi = (min(gaps), max(gaps)) if gaps else (None, None)
+    gap_range = (f"{_money(lo, signed=True)} → {_money(hi, signed=True)}"
+                 if lo is not None else None)
+    insufficient_data = bool(n.get("insufficient_data"))
+    insufficient_reason = n.get("insufficient_reason") or "the comp set is too thin or too dissimilar to quote an upside figure. We do not guess."
+    subline = _verdict_sub(audit)
+
+    brand = os.environ.get("CLIENT_BRAND", DEFAULT_BRAND).strip() or DEFAULT_BRAND
 
     meta_bits = [
         t.get("room_type") or "Listing",
@@ -156,18 +161,20 @@ def build_view(audit: dict, chart_b64: str | None = None, sample: bool = False) 
     } for s in audit.get("signals", [])]
 
     return {
+        "brand": brand,
+        "brand_is_default": brand == DEFAULT_BRAND,
         "listing_name": t.get("name") or "Untitled listing",
         "listing_meta": meta,
         "metro_line": "AUSTIN, TX · INSIDE AIRBNB 2026-09-17",
         "generated_at": (audit.get("generated_at") or "")[:10],
+        "gap_range": gap_range,
+        "insufficient_data": insufficient_data,
+        "insufficient_reason": insufficient_reason,
+        "verdict_sub": _html.escape(subline),
         "est_a": _money(gap_a, signed=True),
         "est_b": _money(gap_b, signed=True),
         "est_a_negative": isinstance(gap_a, (int, float)) and gap_a < 0,
         "est_b_negative": isinstance(gap_b, (int, float)) and gap_b < 0,
-        "insufficient_data": insufficient,
-        "insufficient_reason": insufficient_reason,
-        "gap_range": gap_range,
-        "sample_banner": sample,
         "comp_price": f"{n['comp_median_price']:,.0f}" if n.get("comp_median_price") else "n/a",
         "price": f"{n['target_price']:,.0f}" if n.get("target_price") else "n/a",
         "occupancy": f"{occ:.3f}" if occ is not None else "n/a",
@@ -177,17 +184,20 @@ def build_view(audit: dict, chart_b64: str | None = None, sample: bool = False) 
         "comp_ia_rev": _money(n.get("comp_median_estimated_revenue_l365d")),
         "target_ia_rev": _money(n.get("target_estimated_revenue_l365d")),
         "active_comps_n": comp_rev_n if comp_rev_n is not None else "≥3",
+        "health": health,
+        "health_deductions": " · ".join(health.get("deductions", [])),
         "signals": signals,
         "fixes": fixes or ["No fixes flagged — the listing is healthy."],
-        "summary_plain": summary_plain,
         "summary_html": summary_html,
         "comps_rows": comps_rows,
-        "method": audit["estimate"]["method"],
+        "method": audit["estimate"]["method"] + ([f"Health score: {health.get('formula')} "
+                    f"Deductions: {', '.join(health.get('deductions', [])) or 'none'}."]
+                   if health.get("formula") else []),
         "chart_b64": chart_b64,
     }
 
 
-def render_html(audit: dict, chart_b64: str | None = "auto", sample: bool = False) -> str:
+def render_html(audit: dict, chart_b64: str | None = "auto") -> str:
     if chart_b64 == "auto":
         chart_b64 = make_chart_b64(audit)
     env = Environment(
@@ -195,16 +205,15 @@ def render_html(audit: dict, chart_b64: str | None = "auto", sample: bool = Fals
         autoescape=select_autoescape(["html"]),
     )
     template = env.get_template("audit_report.html")
-    view = build_view(audit, chart_b64=chart_b64, sample=sample)
-    # file:/// prefix — xhtml2pdf wants a URL; forward slashes everywhere
+    view = build_view(audit, chart_b64=chart_b64)
     view["assets"] = ASSETS_FONTS.as_posix()
     return template.render(view=view, assets=view["assets"])
 
 
-def render_pdf(audit: dict, chart_b64: str | None = "auto", sample: bool = False) -> bytes:
+def render_pdf(audit: dict, chart_b64: str | None = "auto") -> bytes:
     from xhtml2pdf import pisa
 
-    html = render_html(audit, chart_b64=chart_b64, sample=sample)
+    html = render_html(audit, chart_b64=chart_b64)
     buf = BytesIO()
     result = pisa.CreatePDF(StringIO(html), dest=buf)
     if result.err:
@@ -221,8 +230,6 @@ def main() -> int:
     ap.add_argument("--k", type=int, default=12)
     ap.add_argument("--photo-count", type=int, default=None)
     ap.add_argument("--provider", choices=["gemini", "groq", "none"], default=None)
-    ap.add_argument("--sample", action="store_true",
-                    help="render as a public-safe SAMPLE banner (anonymized audit is your responsibility)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -233,7 +240,7 @@ def main() -> int:
     provider = None if args.provider in (None, "none") else args.provider
     audit = run_audit(df, args.listing_id, k=args.k,
                       photo_count=args.photo_count, provider=provider)
-    pdf = render_pdf(audit, sample=args.sample)
+    pdf = render_pdf(audit)
 
     out = Path(args.out) if args.out else DEFAULT_OUT_DIR / f"audit_{args.listing_id}.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)
