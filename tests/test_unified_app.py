@@ -1,4 +1,5 @@
-"""Smoke tests: both modes of the unified app render without raising."""
+"""Smoke tests: both modes of the unified app render without raising,
+including the str-lead-finder shim used by Render's str-lead-finder service."""
 
 from __future__ import annotations
 
@@ -27,4 +28,11 @@ def test_unified_audit_mode_renders(monkeypatch):
 
 def test_unified_leads_mode_renders(monkeypatch):
     at = _run("leads", monkeypatch)
+    assert not at.exception
+
+
+def test_leadfinder_shim_boots_leads_mode():
+    # exactly what Render's str-lead-finder service does: streamlit run leadfinder_app.py
+    at = AppTest.from_file(str(ROOT / "leadfinder_app.py"), default_timeout=60)
+    at.run()
     assert not at.exception

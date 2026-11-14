@@ -49,7 +49,7 @@ st.markdown(f"""
 </div>""", unsafe_allow_html=True)
 
 if MODE == "leads":
-    from leadfinder_app import render as _render_leads
+    from leads_ui import render as _render_leads
     _render_leads()
 else:
     from audit_ui import render as _render_audit
