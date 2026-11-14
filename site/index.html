@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>STR Revenue Audit — one-page PDF audits for short-term rentals</title>
-<meta name="description" content="Compare one short-term rental listing against its Austin comp pool using Inside Airbnb open data. See the estimated revenue gap, the top fixes, and a clean one-page PDF a property manager can act on. All revenue figures are honest ESTIMATES with the math printed.">
-<meta property="og:title" content="STR Revenue Audit">
-<meta property="og:description" content="One-page PDF audit of a short-term rental listing vs its local comp pool. Inside Airbnb data, zero paid services.">
+<title>STR Revenue Audit — owner leads for Austin property managers</title>
+<meta name="description" content="I find under-optimized short-term rental owners in Austin, send them a custom one-page revenue audit, and book you the conversations. 30-day pilot, 20 owner leads. Free Inside Airbnb data, honest ESTIMATES, no scraping, no paid services.">
+<meta property="og:title" content="STR Revenue Audit — owner leads for Austin PMs">
+<meta property="og:description" content="I find under-optimized owners in Austin, send them a custom audit, and book you the conversations. 30-day pilot, 20 owner leads.">
 <meta property="og:image" content="assets/screenshot-pdf.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2310483c'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23f4f1ea' font-family='Georgia'>$</text></svg>">
 <style>
@@ -25,47 +25,60 @@
   .nav a.ghbtn { font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; text-decoration: none; color: var(--bone); background: var(--green); padding: 8px 16px; border-radius: 6px; }
   .nav a.ghbtn:hover { background: var(--green-deep); }
 
-  /* HERO */
-  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 44px; align-items: center; padding: 56px 0 40px; }
+  /* HERO — offer first, PDF close behind it */
+  .hero { display: grid; grid-template-columns: 1fr 1.05fr; gap: 44px; align-items: center; padding: 50px 0 36px; }
   .eyebrow { font-family: Arial, sans-serif; font-size: 11px; letter-spacing: 2.2px; color: var(--amber-dark); text-transform: uppercase; font-weight: bold; margin-bottom: 14px; }
-  h1 { font-size: 46px; line-height: 1.12; color: var(--green); font-weight: 700; }
+  h1 { font-size: 40px; line-height: 1.14; color: var(--green); font-weight: 700; }
   h1 em { font-style: italic; color: var(--amber); }
-  .sub { margin-top: 18px; font-size: 17px; color: var(--muted); max-width: 46ch; }
-  .ctas { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+  .sub { margin-top: 18px; font-size: 17px; color: var(--muted); max-width: 48ch; }
+  .offer-line { margin-top: 16px; display: inline-block; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; color: var(--green-deep); }
+  .ctas { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
   .btn { font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; text-decoration: none; border-radius: 6px; padding: 12px 22px; display: inline-block; }
   .btn-primary { background: var(--green); color: var(--bone); }
   .btn-primary:hover { background: var(--green-deep); }
   .btn-ghost { color: var(--green); border: 1.5px solid var(--green); background: transparent; }
   .btn-ghost:hover { background: var(--panel); }
-  .trust { margin-top: 26px; font-family: Arial, sans-serif; font-size: 12px; color: var(--muted); }
   .hero img.pdf { width: 100%; border-radius: 8px; border: 1px solid var(--line); box-shadow: 0 18px 44px rgba(16,72,60,.22); }
 
   /* SECTIONS */
   section { padding: 46px 0; border-top: 1px solid var(--line); }
-  h2 { font-size: 27px; color: var(--green); margin-bottom: 22px; }
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .step { background: #ffffff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
-  .step .n { width: 30px; height: 30px; border-radius: 50%; background: var(--green); color: var(--bone); font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-  .step h3 { font-size: 16px; color: var(--green); margin-bottom: 6px; font-family: Arial, sans-serif; }
-  .step p { font-size: 14px; color: var(--muted); }
-
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  h2 { font-size: 27px; color: var(--green); margin-bottom: 20px; }
+  .muted { color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
   .card { background: #ffffff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
   .card h3 { font-size: 16px; color: var(--green); margin-bottom: 6px; font-family: Arial, sans-serif; }
   .card p { font-size: 14px; color: var(--muted); }
-  .card code, code { font-family: Consolas, monospace; font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--green-deep); }
+  .check { list-style: none; padding: 0; }
+  .check li { margin: 10px 0; padding-left: 26px; position: relative; font-size: 15px; }
+  .check li::before { content: "✓"; position: absolute; left: 0; top: -2px; font-weight: bold; color: var(--amber-dark); font-family: Arial, sans-serif; }
 
+  /* OFFER STRIP */
+  .offer { background: var(--green); color: var(--bone); border-radius: 12px; padding: 28px 30px; display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap; }
+  .offer h2 { color: var(--bone); margin-bottom: 8px; font-size: 23px; }
+  .offer p { color: #cfe3dc; max-width: 62ch; }
+  .offer .tag { font-family: Arial, sans-serif; font-size: 11px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
+  .offer .btn { background: var(--amber); color: #3a2a06; }
+  .offer .btn:hover { background: #e89a2c; }
+
+  /* SAMPLES / screenshots */
   .shot { width: 100%; border-radius: 8px; border: 1px solid var(--line); }
-  .banner { background: var(--panel); border-left: 4px solid var(--amber); border-radius: 0 8px 8px 0; padding: 18px 20px; font-size: 15px; color: #4a3a12; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; font-family: Arial, sans-serif; }
+
+  /* BUILT (technical, at the bottom) */
+  #built dl { display: grid; grid-template-columns: 180px 1fr; row-gap: 8px; font-size: 14px; }
+  #built dt { font-family: Arial, sans-serif; font-weight: bold; color: var(--green-deep); }
+  #built dd { color: var(--muted); }
+  #built code, code { font-family: Consolas, monospace; font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--green-deep); }
 
   footer { background: var(--green); color: #cfe3dc; padding: 26px 0; font-family: Arial, sans-serif; font-size: 12.5px; }
   footer a { color: #f4f1ea; }
   footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 
   @media (max-width: 860px) {
-    .hero { grid-template-columns: 1fr; padding-top: 36px; }
-    h1 { font-size: 34px; }
-    .steps, .grid { grid-template-columns: 1fr; }
+    .hero { grid-template-columns: 1fr; padding-top: 32px; }
+    h1 { font-size: 30px; }
+    .grid2 { grid-template-columns: 1fr; }
+    #built dl { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -74,101 +87,111 @@
 <header>
   <div class="wrap nav">
     <a class="brand" href="#top">STR&nbsp;REVENUE&nbsp;AUDIT</a>
-    <a class="ghbtn" href="https://github.com/coder-red/str-revenue-audit">View on GitHub →</a>
+    <a class="ghbtn" href="https://github.com/coder-red/str-revenue-audit">GitHub →</a>
   </div>
 </header>
 
 <div class="wrap" id="top">
 
-  <!-- HERO -->
+  <!-- 1. THE OFFER + THE PDF (the two things a manager came to see) -->
   <div class="hero">
     <div>
       <div class="eyebrow">For property managers · Austin, TX</div>
-      <h1>That listing is bleeding<br><em>estimated revenue.</em><br>Here's the one-page proof.</h1>
-      <p class="sub">STR Revenue Audit compares any short-term rental listing against its local comp pool from free, public Inside Airbnb data — then prints a clean one-page PDF showing the estimated gap and the top three fixes. No scraping, no paid services, no fake precision.</p>
+      <h1>Under-optimized owners exist here.<br><em>I find them — and send you the conversations.</em></h1>
+      <p class="sub">I scout Austin for multi-listing hosts whose Airbnbs are under-performing against their local comp pool — from Inside Airbnb's public data. Each one gets a one-page, personalized revenue audit, and you get the intro — booked on your calendar.</p>
+      <span class="offer-line">30-day pilot · 20 owner leads</span>
       <div class="ctas">
-        <a class="btn btn-primary" href="https://str-revenue-audit.onrender.com">Launch the live app →</a>
-        <a class="btn btn-ghost" href="https://github.com/coder-red/str-revenue-audit">View on GitHub</a>
+        <a class="btn btn-primary" href="#sample">See the sample audit ↓</a>
+        <a class="btn btn-ghost" href="#pilot">How the pilot works</a>
       </div>
-      <div class="trust">Live demo by <a href="https://str-revenue-audit.onrender.com" style="color:inherit;">str-revenue-audit.onrender.com</a> — free instance, it sleeps when idle (first load ~30–60 s). Inside Airbnb data (CC BY 4.0) · Python · pandas + DuckDB · Streamlit · xhtml2pdf · free LLMs only</div>
     </div>
     <div>
       <a href="https://github.com/coder-red/str-revenue-audit/blob/main/docs/sample_audit.pdf" title="Open the sample audit PDF">
-        <img class="pdf" src="assets/screenshot-pdf.png" alt="One-page STR Revenue Audit PDF: est. revenue gap vs comp median, signals, top fixes">
+        <img class="pdf" src="assets/screenshot-pdf.png" alt="One-page STR Revenue Audit sample PDF: estimated upside range vs comp median, top fixes, formula footer">
       </a>
     </div>
   </div>
 
-  <!-- SAMPLE CLAIM -->
-  <div class="banner">
-    <strong>Real output.</strong> Sample audit for a live Austin listing: last review in 2020, $0 modelled annual revenue vs a <strong>$16,959</strong> comp median — with the formulas printed under every number, and ESTIMATE stamped across the page. Yours could look just like this, minus the awkward conversation with the owner.
-  </div>
-
-  <!-- HOW IT WORKS -->
-  <section id="how">
-    <h2>How it works</h2>
-    <div class="steps">
-      <div class="step">
-        <div class="n">1</div>
-        <h3>Pick a listing</h3>
-        <p>Look one up from the Inside Airbnb Austin snapshot (2026-09-17), enter it manually (unlocks the photo-count signal), or upload a one-row CSV/JSON.</p>
+  <!-- 2. THE OFFER -->
+  <section id="pilot" style="border-top:none; padding-top:10px; padding-bottom:34px;">
+    <div class="offer">
+      <div>
+        <div class="tag">30-day pilot · 20 owner leads</div>
+        <h2>Here is exactly what the pilot covers</h2>
+        <ul class="check" style="margin-top:14px; color:#e9efe7;">
+          <li>I scan Austin's public Inside Airbnb snapshot and rank multi-listing hosts who look like they are leaving money on the table — underpriced, stale reviews, thin copy.</li>
+          <li>Each shortlisted owner receives a <strong>custom one-page audit</strong>, like the sample above — personalized to their property, with ESTIMATE-labelled figures and the math printed on the page.</li>
+          <li>You get warm introductions: replies routed to you, meetings booked, so your sales calendar fills with owners who already know they have a gap.</li>
+        </ul>
+        <p style="margin-top:12px; color:#b9cfc4; font-size:13px;">Runs on free, public data and public-sector licensing only. No scraping, no purchased lists, no guessing emails. If no public contact exists for an owner, that lead is marked no-contact and dropped.</p>
       </div>
-      <div class="step">
-        <div class="n">2</div>
-        <h3>Comps get built</h3>
-        <p>Same room type, beds ±1, same neighbourhood (3 km radius fallback), then k-nearest neighbours on scaled price/beds/baths — the nearest 12 listings win.</p>
-      </div>
-      <div class="step">
-        <div class="n">3</div>
-        <h3>Get the one-pager</h3>
-        <p>Gap estimates, signals (reviews, description, photos, price vs comps), ranked fixes, and an LLM summary in plain English — as a print-ready PDF.</p>
+      <div>
+        <a class="btn" href="#sample">What an audit looks like →</a>
       </div>
     </div>
   </section>
 
-  <!-- WHY DIFFERENT -->
-  <section>
-    <h2>Honest by construction</h2>
-    <div class="grid">
+  <!-- 3. THE SAMPLE -->
+  <section id="sample">
+    <h2>The artifact your leads receive</h2>
+    <p class="muted" style="max-width:64ch;">One page. Their listing vs its local comp pool. A conservative range of estimated annual upside (never a single invented number), the three fixes ranked by impact, and every formula printed at the bottom. No jargon — a non-technical owner can act on it.</p>
+    <div class="grid2" style="margin-top:18px;">
       <div class="card">
-        <h3>ESTIMATES, not invoices</h3>
-        <p>Two estimates only: <code>A = (comp median − your price) × comp occupancy × 365</code> and <code>B = comp median revenue − yours</code> (Inside Airbnb model, active comps only). Both formulas are printed on the page. No invented per-signal dollars.</p>
+        <h3>ESTIMATE, honestly labeled</h3>
+        <p>Two public-data estimates only — price positioning vs the comp median, and the Inside Airbnb revenue model vs active comps. Formula printed right on the page. If the comp set is too thin, the report says INSUFFICIENT DATA instead of quoting a figure.</p>
       </div>
       <div class="card">
-        <h3>Free, public data only</h3>
-        <p>Inside Airbnb snapshot for Austin, TX (2026-09-17, CC BY 4.0). No Airbnb scraping — the loader is ~100 lines and the CSV is the only input.</p>
+        <h3>Fixes a human can ship Monday</h3>
+        <p>Rewrite the description, re-shoot the hero photos, re-price — each fix ranked by practical severity, each tied to what it costs the listing in bookings or rate. No consulting theatre.</p>
       </div>
       <div class="card">
-        <h3>Fixes you can action Monday</h3>
-        <p>Signals are plain English: reviews dried up, description under 60 words, price 10%+ off the comp median, photos under the benchmark — ranked by severity, not vibes.</p>
+        <h3>No invented revenue numbers</h3>
+        <p>The audit is a model, not an invoice. It says so on the page. The range is conservative — the low end is what repricing alone recovers; the high end is comp-median performance. Nobody gets told a promise.</p>
       </div>
       <div class="card">
-        <h3>Reproducible pipeline</h3>
-        <p><code>pip install -r requirements.txt</code> → <code>python scripts/download_data.py</code> → <code>python -m str_audit.audit --listing-id …</code> → <code>python -m str_audit.report --listing-id …</code></p>
+        <h3>Built on free, public data</h3>
+        <p><a href="https://insideairbnb.com/" style="color:var(--green);">Inside Airbnb</a>, Austin TX snapshot 2026-09-17, CC BY 4.0. No Airbnb scraping, no AirDNA, no scraped phone books. Your outreach stays clean and legal.</p>
       </div>
     </div>
+    <p class="note">SAMPLE for an anonymized Austin listing (identity & location removed; figures are estimates from public data). The audit you receive is generated per-property for each owner lead.<br>Source available for inspection on GitHub — ask before reusing it commercially.</p>
   </section>
 
-  <!-- THE APP -->
+  <!-- 4. WHAT A PROPERTY MANAGER GETS -->
   <section>
-    <h2>The tool</h2>
-    <img class="shot" src="assets/screenshot-app.png" alt="Streamlit app: pick a listing, run the audit, download the PDF">
-    <p style="margin-top:14px; color:var(--muted); font-size:14px;">Upload or enter a listing, watch the audit assemble, download the PDF. Photo counts are the one thing public data can't see, so they happen here — in the browser, never stored.</p>
+    <h2>What you get in 30 days</h2>
+    <ul class="check" style="max-width:70ch; font-size:16px; color:var(--ink);">
+      <li>20 owner leads — multi-listing STR hosts in Austin flagged by an explainable score (listings, stale reviews, underpricing, thin copy).</li>
+      <li>A one-page audit per lead — personalized, print-ready, ready to forward on day one of the relationship.</li>
+      <li>A simple pipeline you can hand to your closer: lead score, outreach status, replies tracked (new → contacted → replied → meeting).</li>
+      <li>Proof: the audit itself is the credibility asset — owners book the call because the PDF already did the persuading.</li>
+    </ul>
+    <div class="ctas" style="margin-top:20px;">
+      <a class="btn btn-primary" href="#pilot">The pilot →</a>
+      <a class="btn btn-ghost" href="https://str-revenue-audit.onrender.com">See it live ↗</a>
+    </div>
+    <p class="note">Not ready to commit? Open a GitHub issue on the repo — I'll walk you through a sample for your own portfolio, no pitch.</p>
   </section>
 
-  <!-- CTA -->
-  <section style="text-align:center; border-top:1px solid var(--line);">
-    <h2 style="margin-bottom:12px;">Want this for your portfolio?</h2>
-    <p style="color:var(--muted); max-width:52ch; margin:0 auto 18px;">The whole thing is open source: pipeline, comps engine, PDF renderer, Streamlit shell, tests. Inside Airbnb attribution required (CC BY 4.0). No license file yet — ask before reuse.</p>
-    <a class="btn btn-primary" style="font-size:15px; padding:14px 30px;" href="https://github.com/coder-red/str-revenue-audit">View on GitHub →</a>
+  <!-- 5. HOW IT'S BUILT (the technical appendix, finally at the bottom) -->
+  <section id="built" style="padding-bottom:56px;">
+    <h2>How it's built</h2>
+    <p class="muted" style="max-width:66ch;">For the technically curious. The pipeline is a deterministic, auditable sequence — nothing about it requires trusting an LLM with your numbers. LLMs only write the last summary line (and a deterministic offline summary exists when no API key is set).</p>
+    <dl style="margin-top:18px; max-width:900px;">
+      <dt>Data</dt><dd>Inside Airbnb, "Austin, Texas" snapshot 2026-09-17 (CC BY 4.0). 11,005 listings, public fields only; no scraping, no ToS gray zone.</dd>
+      <dt>Comp pool</dt><dd>Same room type, beds ±1, same neighbourhood (radius &gt; metro fallback), k-nearest on scaled price/beds/baths — 12 comps per subject.</dd>
+      <dt>Est. gap</dt><dd>A: <code>(comp median − your price) × comp occupancy × 365</code> · B: <code>median(active comp estimated_revenue_l365d) − subject</code>. Headline = the conservative A→B range. Below 8 dissimilar comps → INSUFFICIENT DATA and no figure is printed at all.</dd>
+      <dt>Health</dt><dd>100 − 25 per failing signal − 12 per warning − 5 for unknown photo count (public data can't count photos). Formula printed on the page.</dd>
+      <dt>Stack</dt><dd>Python · pandas/DuckDB · scikit-learn · Streamlit · Jinja2 + xhtml2pdf PDF · Gemini/Groq free tiers (offline fallback when absent).</dd>
+      <dt>Repo</dt><dd>github.com/coder-red/str-revenue-audit — source visible for inspection; ask before commercial reuse.</dd>
+    </dl>
   </section>
 
 </div>
 
 <footer>
   <div class="wrap">
-    <div>STR Revenue Audit · built with free, public data</div>
-    <div>Data: Inside Airbnb, Austin TX · 2026-09-17 · <a href="https://insideairbnb.com/get-the-data/">CC BY 4.0</a></div>
+    <div><strong style="color:var(--bone)">STR REVENUE AUDIT</strong> · owner leads for Austin property managers</div>
+    <div>Data: Inside Airbnb, Austin TX · 2026-09-17 · <a href="https://insideairbnb.com/get-the-data/">CC BY 4.0</a> · <a href="https://github.com/coder-red/str-revenue-audit">GitHub</a></div>
   </div>
 </footer>
 
