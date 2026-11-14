@@ -22,8 +22,10 @@ load_dotenv()
 
 from str_leads import pitch as pitch_mod
 from str_leads import store
+from str_audit.cities import city as _city
 
 st.set_page_config(page_title="STR Owner Lead Finder", page_icon="🎯", layout="wide")
+_CITY = _city()
 
 DOT = {"pass": "🟢", "warn": "🟠", "fail": "🔴", "unknown": "⚪"}
 CONTACT_SOURCES = ["host's own website", "business listing (BBB / Google Business Profile)",
@@ -76,9 +78,9 @@ def sender_status() -> tuple[bool, list[str]]:
 def sidebar():
     with st.sidebar:
         st.markdown("### 🎯 STR Owner Lead Finder")
-        st.caption("Austin, TX · Inside Airbnb snapshot 2026-09-17 (CC BY 4.0). "
-                   "Every revenue figure is an ESTIMATE. Hosts ranked by a transparent, "
-                   "explainable score — see score reasons per lead.")
+        st.caption(f"{_CITY['name']}, {_CITY['state']} · Inside Airbnb snapshot {_CITY['snapshot']} "
+                   f"(CC BY 4.0). Every revenue figure is an ESTIMATE. "
+                   f"Hosts ranked by a transparent, explainable score.")
         st.divider()
 
         ok, missing = sender_status()

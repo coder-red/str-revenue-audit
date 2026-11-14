@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -20,7 +21,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from str_audit.comps import DEFAULT_DATA, PROJECT_ROOT, build_comps, rank_comps
+from str_audit import cities
+from str_audit.cities import default_data
+from str_audit.comps import PROJECT_ROOT, build_comps, rank_comps
 from str_audit.data import load_listings
 from str_audit.health import health_score
 from str_audit.llm import summarize_audit
@@ -79,7 +82,7 @@ def build_audit(target: pd.Series, comps: pd.DataFrame, pool_how: str,
     audit = {
         "listing_id": int(listing_id) if listing_id is not None and pd.notna(listing_id) else None,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "data_source": "Inside Airbnb — Austin, TX, snapshot 2026-09-17 (CC BY 4.0)",
+        "data_source": cities.data_source(),
         "target": target_bits,
         "comps": {
             "n": int(len(comps)),
@@ -201,7 +204,10 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--data", default=str(DEFAULT_DATA))
+    ap.add_argument("--city", choices=list(cities.CITIES), default=None,
+                    help="metro to audit (default: austin, or STR_CITY env if set)")
+    ap.add_argument("--data", default=None,
+                    help="path to listings.csv.gz (overrides --city/STR_CITY default)")
     ap.add_argument("--listing-id", type=int, default=None)
     ap.add_argument("--k", type=int, default=12)
     ap.add_argument("--radius-km", type=float, default=3.0)
@@ -212,8 +218,16 @@ def main() -> int:
     ap.add_argument("--demo", action="store_true")
     ap.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     args = ap.parse_args()
+    # Resolution order: --city flag, infer from the --data path, STR_CITY env, austin default.
+    if args.city:
+        os.environ["STR_CITY"] = args.city
+    elif args.data:
+        inferred = cities.infer_slug(args.data)
+        if inferred:
+            os.environ["STR_CITY"] = inferred
+    data_path = args.data or str(default_data())
 
-    df = load_listings(args.data)
+    df = load_listings(data_path)
     listing_id = args.listing_id
     if args.demo or listing_id is None:
         listing_id = int(df["id"].iloc[0])

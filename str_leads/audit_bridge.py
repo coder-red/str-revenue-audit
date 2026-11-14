@@ -14,7 +14,8 @@ import json
 from pathlib import Path
 
 from str_audit.audit import _sanitize, run_audit  # single JSON-safety helper, not duplicated
-from str_audit.comps import DEFAULT_DATA, PROJECT_ROOT
+from str_audit.cities import default_data as _default_data
+from str_audit.comps import PROJECT_ROOT
 from str_audit.data import load_listings
 
 from str_leads import store
@@ -28,7 +29,7 @@ def audit_weakest_listing(listing_id: int, df=None, k: int = 12,
                           out_dir: str | Path = DEFAULT_OUT_DIR) -> dict:
     """Run the audit for one listing; write outputs/audit_<id>.json; return the dict."""
     if df is None:
-        df = load_listings(DEFAULT_DATA)
+        df = load_listings(_default_data())
     audit = run_audit(df, int(listing_id), k=k, provider=provider)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -47,7 +48,7 @@ def audit_top_leads(host_ids: list[int], db_path: str | Path = store.DEFAULT_DB,
     Idempotent: a host that already has audit_listing_id is skipped unless force=True.
     Failures are collected, not raised, so one bad listing never kills the batch.
     """
-    df = load_listings(DEFAULT_DATA)
+    df = load_listings(_default_data())
     results: list[dict] = []
     for host_id in host_ids:
         lead = store.get_lead(host_id, db_path)

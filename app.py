@@ -17,7 +17,7 @@ import streamlit as st
 load_dotenv()
 
 from str_audit.audit import run_audit, run_audit_custom
-from str_audit.comps import DEFAULT_DATA
+from str_audit.cities import city, default_data, label, metro_line
 from str_audit.data import load_listings
 from str_audit.parse import parse_listing_id
 from str_audit.report import _money, render_pdf
@@ -35,15 +35,18 @@ a[href^="#"]
 .block-container { padding-top: 0.9rem; max-width: 1100px; }
 </style>""", unsafe_allow_html=True)
 
+_CITY = city()                     # STR_CITY env var switches metros; default Austin
+_SLUG, _METRO = _CITY["slug"], metro_line()
+
 CURATED = {
     "A dead listing (great before/after)": 21004527,
     "A healthy listing (strong performer)": 5094445,
-}
+} if _SLUG == "austin" else {}
 
 
-@st.cache_resource(show_spinner="Loading Austin snapshot…")
+@st.cache_resource(show_spinner=f"Loading {label()} snapshot…")
 def get_df():
-    return load_listings(DEFAULT_DATA)
+    return load_listings(default_data())
 
 
 DOT = {"pass": "🟢", "warn": "🟠", "fail": "🔴", "unknown": "⚪"}
@@ -115,7 +118,7 @@ def show_audit(audit: dict):
     st.download_button("⬇ Download the one-page PDF", data=pdf,
                        file_name=f"audit_{lid}.pdf", mime="application/pdf",
                        type="primary")
-    st.caption("Inside Airbnb · Austin TX · 2026-09-17 · CC BY 4.0")
+    st.caption(f"Inside Airbnb · {label()} · {_CITY['snapshot']} · CC BY 4.0")
 
 
 def _provider_choice():
@@ -128,7 +131,7 @@ def _provider_arg(choice: str):
 
 st.markdown("<h1 style='font-family:Georgia,serif;color:#10483c;margin-bottom:0'>STR Revenue Audit</h1>",
             unsafe_allow_html=True)
-st.caption("Austin comps · every revenue figure an ESTIMATE")
+st.caption(f"{_METRO} · every revenue figure an ESTIMATE")
 
 tab1, tab2, tab3 = st.tabs(["🔍 Find", "✍️ Enter", "📄 Upload"])
 
@@ -137,7 +140,7 @@ with tab1:
                           label_visibility="collapsed")
     raw = st.text_input("Paste an Airbnb link or listing ID",
                         value=str(CURATED[choice]) if choice in CURATED else "",
-                        placeholder="https://www.airbnb.com/rooms/21004527  — or just  21004527",
+                        placeholder="https://www.airbnb.com/rooms/21004527  — or just the number",
                         key=f"lid_{choice}",
                         label_visibility="collapsed")
     col1, col2, col3 = st.columns(3)
@@ -158,7 +161,7 @@ with tab1:
                                   photo_count=int(photo_count) or None,
                                   provider=_provider_arg(provider))
             except KeyError as exc:
-                st.error(f"{exc} — this project only covers Austin, TX.")
+                st.error(f"{exc} — this deployment covers {label()} only.")
                 st.stop()
         show_audit(audit)
 

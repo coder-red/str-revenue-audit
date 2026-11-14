@@ -40,12 +40,36 @@ We download three files (see `scripts/download_data.py`):
 | `calendar.csv.gz` | ~9.5 MB | availability/price over next ~12 months |
 | `reviews.csv.gz` | ~61 MB | review recency & volume signals (Phase 2) |
 
+## Multi-city support
+
+The app, PDFs, comps engine and lead scorer all resolve the metro from **`STR_CITY`**
+(austin | dallas | fort-worth), default austin. Registry lives in `str_audit/cities.py`.
+
+```bash
+STR_CITY=dallas python scripts/download_data.py          # fetch Dallas snapshot (listings.csv.gz)
+STR_CITY=dallas python scripts/score_leads.py --no-store # score Dallas hosts without touching data/leads.db
+STR_CITY=fort-worth python -m str_audit.audit --city fort-worth --listing-id 1749489509688549076
+streamlit run app.py                                     # STR_CITY=dallas streamlit run app.py
+```
+
+Data dir layout: `data/<slug>-<snapshot>/listings.csv.gz`. Only the Austin file is
+committed (hosted deploys work out of the box); other metros are gitignored — fetch them
+with the command above. Attribution name flows through from the registry (Dallas audit
+reads "Inside Airbnb — Dallas, TX, snapshot 2026-09-19").
+
+Known metros (snapshot dates from Inside Airbnb, 14 Sep–25 Sep 2026): **Austin** (2026-09-17),
+**Dallas** (2026-09-19), **Fort Worth** (2026-09-17). Add a city by appending to `CITIES` in
+`str_audit/cities.py` — no other file needs editing. Inside Airbnb publishes no current
+Houston or San Antonio snapshot, so those two metros can't be offered.
+
 ## Setup
 
 ```bash
 python -m venv .venv && .venv\Scripts\activate   # Windows
 pip install -r requirements.txt
 python scripts/download_data.py                    # fetches Austin 2026-09-17 into data/
+# or pick a metro explicitly:
+STR_CITY=dallas python scripts/download_data.py    # listings.csv.gz only (add --full for ~70MB)
 ```
 
 ## Phase 1 — comps table for one listing

@@ -17,7 +17,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from str_audit.comps import DEFAULT_DATA  # single source of truth for the data path
+from str_audit import cities
 from str_audit.data import load_listings
 from str_audit.signals import MIN_DESCRIPTION_WORDS, STALE_REVIEW_DAYS
 
@@ -145,9 +145,11 @@ def _listing_flags(listings: pd.DataFrame, today: date) -> pd.DataFrame:
     return df
 
 
-def build_host_table(path: str | Path = DEFAULT_DATA,
+def build_host_table(path: str | Path | None = None,
                      today: date | None = None) -> pd.DataFrame:
     """Aggregate the snapshot to one row per host with lead-score inputs attached."""
+    if path is None:
+        path = cities.default_data()
     today = today or date.today()
     listings = _listing_flags(load_listings(path), today)
     hosts = load_host_fields(path)

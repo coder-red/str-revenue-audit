@@ -26,6 +26,7 @@ from str_leads import store
 from str_leads.audit_bridge import audit_top_leads
 from str_leads.data import build_host_table
 from str_leads.score import MAX_SCORE, SCORE_VERSION, score_hosts
+from str_audit.cities import city as _city_fn, default_data
 
 DEFAULT_CSV = "outputs/leads_ranked.csv"
 
@@ -34,7 +35,9 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--data", default=None, help="path to listings.csv.gz (default: Austin snapshot)")
+    ap.add_argument("--data", default=None, help="path to listings.csv.gz (overrides --city default)")
+    ap.add_argument("--city", choices=["austin", "dallas", "fort-worth"], default=None,
+                    help="metro to score (default: austin, or STR_CITY env if set); downloads via scripts/download_data.py if needed")
     ap.add_argument("--top-n", type=int, default=10, help="rows to print (default 10)")
     ap.add_argument("--csv", default=DEFAULT_CSV, help="where to write the ranked CSV")
     ap.add_argument("--include-agencies", action="store_true",
@@ -57,7 +60,10 @@ def main() -> int:
     args = ap.parse_args()
 
     print("Loading snapshot and building host table…")
-    table = build_host_table(args.data) if args.data else build_host_table()
+    slug = _city_fn(args.city)["slug"] if args.city else _city_fn()["slug"]
+    _path = Path(args.data) if args.data else default_data(slug)
+    print(f"city data: {_path}")
+    table = build_host_table(str(_path))
     ranked_all = score_hosts(table, exclude_agencies=not args.include_agencies,
                              agency_cutoff=args.agency_cutoff)
     ranked = ranked_all if args.include_agencies else ranked_all[~ranked_all["excluded_agency"]]

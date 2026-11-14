@@ -3,8 +3,9 @@
 .env.*
 !.env.example
 
-# Data (Inside Airbnb downloads) — public CC BY 4.0 data, too big for git.
-# Exception: the 7 MB listings file IS committed so hosted deploys work out of the box.
+# Data (Inside Airbnb snapshots) — too big for git.
+# Exceptions: Austin's listings.csv.gz (deploys work out of the box) and the
+# committed redacted demo seed.
 data/*
 data/austin-2026-09-17/*
 !data/austin-2026-09-17/listings.csv.gz

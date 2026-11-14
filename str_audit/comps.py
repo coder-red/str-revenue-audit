@@ -28,8 +28,10 @@ from sklearn.preprocessing import StandardScaler
 
 from str_audit.data import load_listings
 
+from str_audit import cities  # noqa: F401  (registry for metro/data paths)
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DATA = PROJECT_ROOT / "data" / "austin-2026-09-17" / "listings.csv.gz"
+DEFAULT_DATA = cities.default_data("austin")
 DEFAULT_OUT = PROJECT_ROOT / "outputs" / "comps.csv"
 
 FEATURES = ["price", "bedrooms", "beds", "baths"]

@@ -93,7 +93,7 @@ def score_host(row: pd.Series) -> tuple[int, list[str]]:
     n = int(n) if pd.notna(n) else 0
     if n >= 2:
         score += WEIGHT_TWO_PLUS
-        reasons.append(f"+{WEIGHT_TWO_PLUS} — {n} listings in Austin (self-managing portfolio)")
+        reasons.append(f"+{WEIGHT_TWO_PLUS} — {n} listings in this metro (self-managing portfolio)")
         if SWEET_SPOT_MAX >= n >= 3:
             score += WEIGHT_SWEET_SPOT
             reasons.append(f"+{WEIGHT_SWEET_SPOT} — {n} listings (sweet spot for the target profile)")

@@ -17,16 +17,16 @@ import json
 
 import pandas as pd  # noqa: E402
 
+from str_audit.cities import default_data
 from str_leads.data import build_host_table
 from str_leads.score import SCORE_VERSION, score_hosts
 from str_leads.store import redact_name
-from str_audit.comps import DEFAULT_DATA
 
 OUT = Path(__file__).resolve().parent.parent / "data" / "lead_seed.parquet"
 
 
 def main() -> int:
-    print("building host table from", DEFAULT_DATA)
+    print("building host table from", default_data())
     table = build_host_table()
     ranked = score_hosts(table, agency_cutoff=5)
     ranked = ranked[~ranked["excluded_agency"]].reset_index(drop=True)

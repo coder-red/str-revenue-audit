@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from str_audit import cities
+from str_audit.cities import default_data, metro_line
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = PROJECT_ROOT / "templates"
@@ -165,7 +167,7 @@ def build_view(audit: dict, chart_b64: str | None = None, sample: bool = False) 
         "brand_is_default": brand == DEFAULT_BRAND,
         "listing_name": t.get("name") or "Untitled listing",
         "listing_meta": meta,
-        "metro_line": "AUSTIN, TX · INSIDE AIRBNB 2026-09-17",
+        "metro_line": metro_line(),
         "generated_at": (audit.get("generated_at") or "")[:10],
         "gap_range": gap_range,
         "insufficient_data": insufficient_data,
@@ -226,7 +228,10 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--data", default=str(PROJECT_ROOT / "data" / "austin-2026-09-17" / "listings.csv.gz"))
+    ap.add_argument("--city", choices=list(cities.CITIES), default=None,
+                    help="metro to audit (default: austin, or STR_CITY env if set)")
+    ap.add_argument("--data", default=None,
+                    help="path to listings.csv.gz (overrides --city/STR_CITY default)")
     ap.add_argument("--listing-id", type=int, required=True)
     ap.add_argument("--k", type=int, default=12)
     ap.add_argument("--photo-count", type=int, default=None)
@@ -235,11 +240,18 @@ def main() -> int:
                     help="render as a public-safe SAMPLE banner (anonymized audit is your responsibility)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
+    if args.city:
+        os.environ["STR_CITY"] = args.city
+    elif args.data:
+        inferred = cities.infer_slug(args.data)
+        if inferred:
+            os.environ["STR_CITY"] = inferred
+    data_path = args.data or str(default_data())
 
     from str_audit.audit import run_audit
     from str_audit.data import load_listings
 
-    df = load_listings(args.data)
+    df = load_listings(data_path)
     provider = None if args.provider in (None, "none") else args.provider
     audit = run_audit(df, args.listing_id, k=args.k,
                       photo_count=args.photo_count, provider=provider)
