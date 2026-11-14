@@ -13,9 +13,9 @@ Every revenue number in the report is labelled **ESTIMATE** with the calculation
 |---|---|
 | ![App](docs/screenshot-app.png) | ![PDF](docs/screenshot-pdf.png) |
 
-Sample output (anonymized — listing identity, exact location and photos removed; based on a real underperforming Austin listing):
+Sample output (anonymized — identity and exact location removed; a synthetic 2BR listing audited against the real Austin comp pool):
 **[docs/sample_audit.pdf](docs/sample_audit.pdf)**
-— a dead Austin 1BR condo, $0 modelled annual revenue vs a $16,959 comp-median estimate.
+— an active 2BR with 19 reviews, health 83/100, conservative upside range **+$1,768 → +$11,146 per year**, every figure ESTIMATE-labelled with the math printed on the page.
 The tool's job: show a property manager the gap and the top fixes, honestly labelled as estimates.
 
 ## Status
@@ -224,5 +224,5 @@ on Linux/macOS unchanged. See `CREDITS.md`.
 
 ## License
 
-This project's own code: MIT (see `CREDITS.md` for third-party licenses).
+This project's own code: all rights reserved (source visible for inspection; ask before reuse). Data: Inside Airbnb, CC BY 4.0 (attribution required).
 Data: Inside Airbnb, CC BY 4.0.

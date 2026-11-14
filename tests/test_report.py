@@ -53,6 +53,13 @@ def _audit():
     }
 
 
+def test_sample_banner_renders_when_requested():
+    html = render_html(_audit(), chart_b64=None, sample=True)
+    assert "SAMPLE — BASED ON PUBLIC INSIDE AIRBNB DATA — ESTIMATES ONLY" in html
+    html2 = render_html(_audit(), chart_b64=None)   # default: no banner
+    assert "SAMPLE — BASED ON PUBLIC INSIDE AIRBNB DATA" not in html2
+
+
 def test_render_html_contains_estimates_and_escapes():
     html = render_html(_audit(), chart_b64=None)
     assert "ESTIMATE" in html

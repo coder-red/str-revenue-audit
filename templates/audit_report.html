@@ -17,6 +17,8 @@ body { font-family: DejaVuSerif; font-size: 8pt; color: #232323; line-height: 1.
 
 /* ---------- wordmark band ---------- */
 .band { width: 100%; background: #0d3b31; padding: 5px 12px; }
+.samplebanner { background: #b91c1c; color: #ffffff; padding: 3pt 10px; font-family: DejaVuSansBold;
+                font-size: 7pt; letter-spacing: 1.2pt; text-align: center; white-space: normal; word-wrap: break-word; }
 .band td { vertical-align: middle; }
 .wordmark { font-family: DejaVuSansBold; font-size: 10pt; letter-spacing: 3.2pt; color: #f4f1ea; }
 .wordmark small { display: block; font-size: 4.6pt; letter-spacing: 1.4pt; color: #9fc3b6; margin-top: 2px; font-weight: normal; }
@@ -116,6 +118,9 @@ body { font-family: DejaVuSerif; font-size: 8pt; color: #232323; line-height: 1.
   <td class="band-right">{{ view.metro_line }}<br>{{ view.generated_at }}</td>
 </tr></table>
 
+{% if view.sample_banner %}
+<div class="samplebanner">SAMPLE — BASED ON PUBLIC INSIDE AIRBNB DATA — ESTIMATES ONLY</div>
+{% endif %}
 <!-- VERDICT ROW -->
 <table class="verdict"><tr>
   <td class="v-text">

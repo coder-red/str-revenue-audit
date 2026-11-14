@@ -99,7 +99,7 @@ def _verdict_sub(audit: dict) -> str:
     return "Listing is fundamentally healthy — tactical tuning only."
 
 
-def build_view(audit: dict, chart_b64: str | None = None) -> dict:
+def build_view(audit: dict, chart_b64: str | None = None, sample: bool = False) -> dict:
     t = audit["target"]
     c = audit["comps"]
     n = audit["estimate"]["numbers"]
@@ -185,6 +185,7 @@ def build_view(audit: dict, chart_b64: str | None = None) -> dict:
         "target_ia_rev": _money(n.get("target_estimated_revenue_l365d")),
         "active_comps_n": comp_rev_n if comp_rev_n is not None else "≥3",
         "health": health,
+        "sample_banner": sample,
         "health_deductions": " · ".join(health.get("deductions", [])),
         "signals": signals,
         "fixes": fixes or ["No fixes flagged — the listing is healthy."],
@@ -197,7 +198,7 @@ def build_view(audit: dict, chart_b64: str | None = None) -> dict:
     }
 
 
-def render_html(audit: dict, chart_b64: str | None = "auto") -> str:
+def render_html(audit: dict, chart_b64: str | None = "auto", sample: bool = False) -> str:
     if chart_b64 == "auto":
         chart_b64 = make_chart_b64(audit)
     env = Environment(
@@ -205,15 +206,15 @@ def render_html(audit: dict, chart_b64: str | None = "auto") -> str:
         autoescape=select_autoescape(["html"]),
     )
     template = env.get_template("audit_report.html")
-    view = build_view(audit, chart_b64=chart_b64)
+    view = build_view(audit, chart_b64=chart_b64, sample=sample)
     view["assets"] = ASSETS_FONTS.as_posix()
     return template.render(view=view, assets=view["assets"])
 
 
-def render_pdf(audit: dict, chart_b64: str | None = "auto") -> bytes:
+def render_pdf(audit: dict, chart_b64: str | None = "auto", sample: bool = False) -> bytes:
     from xhtml2pdf import pisa
 
-    html = render_html(audit, chart_b64=chart_b64)
+    html = render_html(audit, chart_b64=chart_b64, sample=sample)
     buf = BytesIO()
     result = pisa.CreatePDF(StringIO(html), dest=buf)
     if result.err:
@@ -230,6 +231,8 @@ def main() -> int:
     ap.add_argument("--k", type=int, default=12)
     ap.add_argument("--photo-count", type=int, default=None)
     ap.add_argument("--provider", choices=["gemini", "groq", "none"], default=None)
+    ap.add_argument("--sample", action="store_true",
+                    help="render as a public-safe SAMPLE banner (anonymized audit is your responsibility)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -240,7 +243,7 @@ def main() -> int:
     provider = None if args.provider in (None, "none") else args.provider
     audit = run_audit(df, args.listing_id, k=args.k,
                       photo_count=args.photo_count, provider=provider)
-    pdf = render_pdf(audit)
+    pdf = render_pdf(audit, sample=args.sample)
 
     out = Path(args.out) if args.out else DEFAULT_OUT_DIR / f"audit_{args.listing_id}.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)
