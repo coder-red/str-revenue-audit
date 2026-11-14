@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from str_leads import pitch as pitch_mod
 from str_leads import store
+from str_leads import contact_finder
 from str_leads.audit_bridge import audit_top_leads
 from str_leads.data import build_host_table
 from str_leads.score import MAX_SCORE, SCORE_VERSION, score_hosts
@@ -51,6 +52,8 @@ def main() -> int:
                     help="run the audit on the weakest listing of each of the top N hosts")
     ap.add_argument("--provider", choices=["gemini", "groq", "none"], default=None,
                     help="LLM provider (default: LLM_PROVIDER from .env; 'none' = offline fallback)")
+    ap.add_argument("--find-contacts", type=int, default=0, metavar="N",
+                    help="public-contact discovery for the top N leads only (Brave API; needs BRAVE_API_KEY in .env). NEVER runs by default.")
     ap.add_argument("--force-audit", action="store_true",
                     help="re-audit hosts that already have an audit on file")
     ap.add_argument("--pitch", type=int, default=0, metavar="N",
@@ -112,6 +115,44 @@ def main() -> int:
                       f"(est. gap vs comp-median: {gap_s})")
             else:
                 print(f"  host {r['host_id']}: FAILED — {r.get('error')}")
+
+    if args.find_contacts > 0:
+        brave_key = None
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+            import os as _os
+            brave_key = _os.environ.get("BRAVE_API_KEY", "").strip() or None
+        except ImportError:
+            pass
+        if not brave_key:
+            print("\n--find-contacts: BRAVE_API_KEY not set in .env — skipping contact search. "
+                  "Sign up at https://api-dashboard.search.brave.com/register (free tier, $5/mo included).")
+        else:
+            from str_audit.cities import label as _city_label
+            city = _city_label(slug)
+            targets = ranked.head(args.find_contacts).to_dict("records")
+            print(f"\nPublic-contact discovery for top {args.find_contacts} hosts ({city}, Brave web)…")
+            print("Note: hit rates are low on Inside Airbnb names (display names, no domain). "
+                  "Emails are ONLY accepted when name matches the page AND a mailto: exists — never guessed.")
+            for r in targets:
+                host = r["host_name"]
+                hits = contact_finder.find_for_lead(host, city, brave_key, max_results=10)
+                if hits:
+                    top = hits[0]
+                    store.update_lead(int(r["host_id"]), args.db,
+                                      contact_email=top.email,
+                                      contact_url=top.url,
+                                      contact_source=top.source,
+                                      contact_found="yes",
+                                      contact_found_on=__import__("datetime").date.today().isoformat(),
+                                      notes=f"auto: evidence {top.evidence_score} | query: {top.query}")
+                    print(f"  host {r['host_id']} ({host!r}): {top.email}  via {top.url[:80]}")
+                else:
+                    store.update_lead(int(r["host_id"]), args.db,
+                                      contact_found="not_found",
+                                      contact_found_on=__import__("datetime").date.today().isoformat())
+                    print(f"  host {r['host_id']} ({host!r}): no public contact found")
 
     if args.pitch > 0:
         provider = None if args.provider in (None, "none") else args.provider

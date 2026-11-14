@@ -96,3 +96,11 @@ revenue headline, manual contact-research fields + CSV export + found-rate stat,
 - `app.py`, `audit_ui.py`, `leadfinder_app.py`, `scripts/score_leads.py` — unified app shell, audit UI as a component, review queue + pipeline driver.
 
 All rights reserved — source visible on GitHub for inspection; ask before reuse.
+
+
+## External services (free tier; never bundled, keys only in .env)
+
+| Service | Terms / pricing | Use |
+|---|---|---|
+| **Brave Search API** | Free tier; $5/mo credit included (~1,000 queries/mo) | Only used by `scripts/score_leads.py --find-contacts N`. `BRAVE_API_KEY` lives in `.env`; never committed; never runs by default. Candidates are **name-matched** to the page and require an explicit `mailto:` — never guessed. |
+| **GitHub Actions** (actions/checkout, actions/setup-python) | MIT | `.github/workflows/refresh-leads.yml` runs quarterly on GitHub's free runners to refresh `data/lead_seed.parquet`. |

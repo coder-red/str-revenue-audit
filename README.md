@@ -86,7 +86,9 @@ With no keys (or `--provider none`), a deterministic fallback summary is produce
 from the audit dict — no invented numbers, works offline. Prompt lives in
 `str_audit/audit_prompt.py`; every call is wrapped so any API failure degrades
 to the fallback instead of crashing.
+
 ## STR Owner Lead Finder (Phase 4)
+
 From the same Inside Airbnb Austin snapshot, find the hosts who likely need a property
 manager, audit their weakest listing, draft a personalized outreach email, and queue
 it for **your** review. There is **no send button anywhere** — output is an approval
@@ -140,6 +142,34 @@ thin shim (`leadfinder_app.py`) so the str-lead-finder Render service executes t
   demo. Local `streamlit run leadfinder_app.py` shows full names.
 Snapshot note: the Austin 2026-09-17 file ships `host_since` and `host_response_rate` as
 100% NULL (Inside Airbnb removed them) — those two weights never fire on this data.
+
+## Automation (opt-in)
+
+Two pieces, both free:
+
+1. **Quarterly Inside Airbnb refresh** — `.github/workflows/refresh-leads.yml` runs
+   `scripts/build_lead_seed.py` every 3 months on GitHub's free runners and commits the
+   fresh redacted seed back to `data/lead_seed.parquet`. The hosted demo re-seeds itself
+   on cold start. No keys, no bill — works without a human in the loop.
+
+2. **Best-effort public contact discovery** — `scripts/score_leads.py --find-contacts N`
+   (default **off**; `--find-contacts 0` is a no-op) queries **Brave Search API** for each
+   target host, requires the host's first name to appear on the page AND an explicit
+   `mailto:addr` (never guessed, never uses `firstname@domain` permutations). Hit rates
+   are low on Inside Airbnb's first-name-only profiles. You supply your own
+   `BRAVE_API_KEY` in `.env` (sign up free, $5/mo credits included, ~1,000 searches
+   free/month — covers the top 10 leads many times over). Every candidate writes
+   `contact_source=brave_search` so you know what was auto-found vs human-researched.
+
+Security gates stay exactly the same: every hit lands in the queue as a raw finding, only
+**approved** leads export, and the CAN-SPAM check blocks send-ready status until real sender
+identity is set in `.env`. There is still **no send path** anywhere in this repo.
+
+```bash
+# after `pip install -r requirements.txt` and `cp .env.example .env` with a real key:
+python scripts/score_leads.py --city austin --audit 10 --pitch 10 --find-contacts 10
+```
+
 ## Deploy
 **Live:** app — <https://str-revenue-audit.onrender.com> · landing page — <https://str-revenue-audit-site.onrender.com>
 (free Render tier; auto-deploy from `main`). Steps for other hosts: **[docs/deploy.md](docs/deploy.md)**.
