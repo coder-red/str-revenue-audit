@@ -165,6 +165,27 @@ def test_contact_found_counts_and_clearing(tmp_path):
         store.update_lead(101, db, contact_found="maybe")
 
 
+def test_redact_name_initials():
+    assert store.redact_name("Heather & Tony") == "H. & T."
+    assert store.redact_name("Alexandra Kaleialoha") == "A. K."
+    assert store.redact_name("Macy") == "M."
+    assert store.redact_name("  ") is None
+    assert store.redact_name(None) is None
+
+
+def test_exports_redact_names_on_request(tmp_path):
+    db = tmp_path / "leads.db"
+    store.upsert_scored_leads(_scored_df(), db)   # Alice (101), Bob (202)
+
+    csv_redacted = store.export_csv(db, redact_names=True)
+    assert "Alice" not in csv_redacted and "A." in csv_redacted
+    assert "Bob" not in csv_redacted and "B." in csv_redacted
+
+    need_redacted = store.export_needing_research_csv(db, redact_names=True)
+    assert "Alice" not in need_redacted and "Bob" not in need_redacted
+    assert "A." in need_redacted and "B." in need_redacted
+
+
 def test_export_needing_research_filters_and_excludes_closed(tmp_path):
     db = tmp_path / "leads.db"
     store.upsert_scored_leads(_scored_df(), db)

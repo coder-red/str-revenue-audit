@@ -37,6 +37,33 @@ _UPDATABLE = {
 # Statuses that mean the outreach question is closed — excluded from "needs research".
 _CLOSED_STATUSES = ("rejected", "do_not_contact", "no_contact", "sent", "replied", "meeting")
 
+
+def redact_name(name) -> str | None:
+    """'Heather & Tony' -> 'H. & T.' — initials only, for public/demo renderings.
+
+    Strips invisible/format characters (Inside Airbnb wraps some names in bidi
+    isolate marks like \\u2068) so no stray glyph leaks into public output.
+    Hyphens are treated as token separators; junk tokens ("@", "#", …) are dropped.
+    """
+    if not name or not isinstance(name, str):
+        return None
+    import re
+    import unicodedata
+    cleaned = "".join(c for c in name if unicodedata.category(c)[0] != "C")
+    cleaned = re.sub(r"[‐-―-]+", " ", cleaned)
+    out = []
+    for tok in cleaned.split():
+        t = tok.strip(".,;:()[]\"'")
+        if not t:
+            continue
+        if t == "&":
+            out.append("&")
+            continue
+        if not t[0].isalnum():
+            continue
+        out.append(t[0].upper() + ".")
+    return " ".join(out) if out else None
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS leads (
     host_id INTEGER PRIMARY KEY,
@@ -138,8 +165,12 @@ def upsert_scored_leads(df: pd.DataFrame, db_path: str | Path = DEFAULT_DB,
             if not isinstance(reasons, str):
                 reasons = json.dumps(list(reasons), ensure_ascii=False)
             nbhd = row.get("neighbourhoods")
-            neighbourhoods = json.dumps(list(nbhd) if isinstance(nbhd, (list, tuple)) else [],
-                                        ensure_ascii=False)
+            if isinstance(nbhd, str):
+                neighbourhoods = nbhd  # already JSON-encoded (public demo seed)
+            elif isinstance(nbhd, (list, tuple)):
+                neighbourhoods = json.dumps(list(nbhd), ensure_ascii=False)
+            else:
+                neighbourhoods = json.dumps([], ensure_ascii=False)
             exists = conn.execute("SELECT 1 FROM leads WHERE host_id = ?", (host_id,)).fetchone()
             now = _now()
             if exists:
@@ -248,7 +279,8 @@ _NEED_RESEARCH_COLS = [
 ]
 
 
-def export_needing_research_csv(db_path: str | Path = DEFAULT_DB) -> str:
+def export_needing_research_csv(db_path: str | Path = DEFAULT_DB,
+                                redact_names: bool = False) -> str:
     """CSV of leads still needing manual contact research — for the outreach workflow."""
     leads = needing_research(db_path)
     buf = io.StringIO()
@@ -257,6 +289,8 @@ def export_needing_research_csv(db_path: str | Path = DEFAULT_DB) -> str:
     writer.writeheader()
     for d in leads:
         row = {c: d.get(c) for c in _NEED_RESEARCH_COLS}
+        if redact_names:
+            row["host_name"] = redact_name(row["host_name"])
         row["neighbourhoods"] = ", ".join(d.get("neighbourhoods") or [])
         row["reasons"] = " | ".join(d.get("reasons") or [])
         writer.writerow(row)
@@ -314,7 +348,8 @@ _EXPORT_COLS = [
 ]
 
 
-def export_csv(db_path: str | Path = DEFAULT_DB, statuses: list[str] | None = None) -> str:
+def export_csv(db_path: str | Path = DEFAULT_DB, statuses: list[str] | None = None,
+               redact_names: bool = False) -> str:
     """CSV of the leads, reasons flattened — ready for Excel. UTF-8 BOM so Excel opens it cleanly."""
     leads = list_leads(db_path)
     if statuses:
@@ -328,6 +363,8 @@ def export_csv(db_path: str | Path = DEFAULT_DB, statuses: list[str] | None = No
     writer.writeheader()
     for d in leads:
         row = {c: d.get(c) for c in _EXPORT_COLS}
+        if redact_names:
+            row["host_name"] = redact_name(row["host_name"])
         row["reasons"] = " | ".join(d.get("reasons") or [])
         row["neighbourhoods"] = ", ".join(d.get("neighbourhoods") or [])
         writer.writerow(row)

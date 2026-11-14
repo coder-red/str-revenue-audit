@@ -31,6 +31,40 @@ CONTACT_SOURCES = ["host's own website", "business listing (BBB / Google Busines
                     "other (describe in notes)"]
 DB = str(store.DEFAULT_DB)
 
+# Hosted portfolio demos set LEADFINDER_REDACT_NAMES=1: host names render as
+# initials everywhere (queue, tables, exports) so no real owner is public.
+REDACT = os.environ.get("LEADFINDER_REDACT_NAMES", "").lower() in ("1", "true", "yes")
+
+
+def _disp_name(d: dict) -> str:
+    if REDACT:
+        return store.redact_name(d.get("host_name")) or f"Host {d.get('host_id')}"
+    return d.get("host_name") or "(unnamed host)"
+
+
+def _seed_demo_if_empty():
+    """Hosted demos start with no DB; seed from the committed redacted parquet on first boot."""
+    try:
+        total = sum(store.status_counts(DB).values())
+    except Exception:
+        total = 0
+    if total:
+        return
+    seed = Path(__file__).resolve().parent / "data" / "lead_seed.parquet"
+    if seed.exists():
+        with st.spinner("Loading public demo rankings…"):
+            import pandas as pd
+            ranked = pd.read_parquet(seed)
+            store.upsert_scored_leads(ranked, DB, score_version=str(ranked["score_version"].iloc[0]))
+        return
+    with st.spinner("Building demo rankings from Inside Airbnb's public Austin snapshot "
+                    "(one-time, ~60-90 s)…"):
+        from str_leads.data import build_host_table
+        from str_leads.score import SCORE_VERSION, score_hosts
+        table = build_host_table()
+        ranked = score_hosts(table, agency_cutoff=5)
+        store.upsert_scored_leads(ranked, DB, score_version=SCORE_VERSION)
+
 
 def sender_status() -> tuple[bool, list[str]]:
     s = pitch_mod.sender_identity()
@@ -58,6 +92,9 @@ def sidebar():
                        "Edit `.env`, then use “Re-draft from audit” per lead.")
 
         st.divider()
+        if REDACT:
+            st.caption("Portfolio demo — host names redacted to initials. "
+                       "No real owner is identifiable from this deployment.")
         st.markdown("**Queue contents**")
         counts = store.status_counts(DB)
         cols = st.columns(4)
@@ -96,8 +133,8 @@ def sidebar():
 
 
 def _lead_label(d: dict) -> str:
-    name = d.get("host_name") or "(unnamed host)"
-    return f"{d['score']}/14 · {name} · {d.get('n_listings', 0)} listings · {d['status']}"
+    name = _disp_name(d)
+    return f"{d['score']}/16 · {name} · {d.get('n_listings', 0)} listings · {d['status']}"
 
 
 def _audit_brief(d: dict) -> dict | None:
@@ -145,7 +182,7 @@ def review_queue():
 
     # -- header metrics ------------------------------------------------------
     m = st.columns(3)
-    m[0].metric("Lead score", f"{d['score']}/14")
+    m[0].metric("Lead score", f"{d['score']}/16")
     m[1].metric("Listings", d.get("n_listings") or 0)
     m[2].metric("Median price", f"${d['median_price']:.0f}" if d.get("median_price") else "n/a")
     tr = d.get("total_modelled_revenue")
@@ -305,7 +342,7 @@ def all_leads_tab():
     rows = []
     for d in leads:
         rows.append({
-            "host_id": d["host_id"], "host_name": d.get("host_name"),
+            "host_id": d["host_id"], "host_name": _disp_name(d),
             "score": d["score"], "n_listings": d.get("n_listings"),
             "median_price": d.get("median_price"),
             "status": d["status"], "contact": d.get("contact_email"),
@@ -341,7 +378,7 @@ def export_tab():
                                    "sender identity, postal address and opt-out before sending.")
     else:
         acknowledged = True
-    csv_bytes = store.export_csv(DB, statuses).encode("utf-8")
+    csv_bytes = store.export_csv(DB, statuses, redact_names=REDACT).encode("utf-8")
     st.download_button("Download leads_export.csv", data=csv_bytes,
                        file_name="leads_export.csv", mime="text/csv",
                        disabled=not acknowledged)
@@ -354,11 +391,13 @@ def export_tab():
     st.write(f"**{len(needing)}** lead(s) have not been researched yet (contact found = unresearched, "
              f"status not closed). Work these in the queue, or hand the CSV to whoever does the manual dig.")
     st.download_button("Download leads_needing_contact_research.csv",
-                       data=store.export_needing_research_csv(DB).encode("utf-8"),
+                       data=store.export_needing_research_csv(DB, redact_names=REDACT).encode("utf-8"),
                        file_name="leads_needing_contact_research.csv", mime="text/csv")
 
 
 def main():
+    if REDACT:
+        _seed_demo_if_empty()
     sidebar()
     tab1, tab2, tab3 = st.tabs(["📥 Review queue", "📋 All leads", "⬇️ Export"])
     with tab1:
