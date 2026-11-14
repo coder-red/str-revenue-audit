@@ -93,6 +93,6 @@ revenue headline, manual contact-research fields + CSV export + found-rate stat,
 - `str_audit/` — Inside Airbnb field normalisation, comp-matching rules,
   audit signals, revenue-gap estimate, audit-summary prompt.
 - `str_leads/` — host-level aggregation, lead score, pitch drafting, SQLite store.
-- `leadfinder_app.py`, `scripts/score_leads.py` — review queue UI and pipeline driver.
+- `app.py`, `audit_ui.py`, `leadfinder_app.py`, `scripts/score_leads.py` — unified app shell, audit UI as a component, review queue + pipeline driver.
 
 All rights reserved — source visible on GitHub for inspection; ask before reuse.

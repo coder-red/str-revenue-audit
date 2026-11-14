@@ -130,8 +130,15 @@ Flow: `score → audit weakest listing → draft pitch → review → approve �
 python scripts/score_leads.py                # Phase 1: score all hosts (upserts into data/leads.db)
 python scripts/score_leads.py --audit 10     # Phase 2: audit weakest listing of top 10
 python scripts/score_leads.py --pitch 10     # Phase 3: draft pitches for those 10
-streamlit run leadfinder_app.py              # Phase 4: review queue → approve/reject → CSV export
+streamlit run app.py                         # Phase 4: the whole thing — Revenue audit + Owner lead finder
+streamlit run app.py --server.port 8516      # ?mode=audit (default) | ?mode=leads
 ```
+
+**One app, two modes** (`app.py`): the audit mode is the client-facing Revenue Audit; the
+`?mode=leads` lane is the Owner Lead Finder review queue. `LANDING_MODE=leads` flips the
+default; slim nav bar top-right switches without leaving the shell. Both modes share the same
+code, the same `STR_CITY` switch, and the same attribution — `leadfinder_app.py` remains as a
+thin entry point for the str-lead-finder Render service.
 
 - **Lead score** (`str_leads/score.py`, custom, v2.0, max 16): transparent weighted points,
   tuned toward small self-managing owners (roughly 1–4 listings) with weak listings —
@@ -221,7 +228,9 @@ on Linux/macOS unchanged. See `CREDITS.md`.
 | `.env.example` | Template for Phase 2 LLM keys (Gemini/Groq). Real values live in `.env`, never committed. |
 | `requirements.txt` | Minimal pinned-ish deps. Phase 1: pandas, duckdb, scikit-learn. |
 | `scripts/download_data.py` | Fetches the Austin 2026-09-17 Inside Airbnb files into `data/` (idempotent, stdlib only). |
-| `app.py` | Streamlit app — three ways in (look up / enter / upload), audit view, PDF download button. |
+| `app.py` | Unified shell: mode dispatch (Revenue audit ↔ Owner lead finder), slim brand bar, `LANDING_MODE` default, `?mode=` deep links. |
+| `audit_ui.py` | The audit UI, wrapped as `render()` — imported by `app.py`'s audit mode. |
+| `leadfinder_app.py` | The Owner Lead Finder review queue, wrapped as `render()` — imported by `app.py`'s leads mode; also runnable directly. |
 | `templates/audit_report.html` | The one-page PDF: Jinja2 + table CSS (xhtml2pdf-safe). All ESTIMATE labels, method and attribution render from data; branding is here (`.band-title`). |
 | `str_audit/report.py` | Audit dict → styled HTML → PDF bytes. Owns the Plotly→kaleido chart (PNG base64; silently omitted if kaleido can't run) and the Jinja view model. |
 | `assets/fonts/` | DejaVu TTFs embedded in the PDF (Bitstream Vera license — see `assets/fonts/README.txt`). |

@@ -24,9 +24,7 @@ from str_leads import pitch as pitch_mod
 from str_leads import store
 from str_audit.cities import city as _city
 
-st.set_page_config(page_title="STR Owner Lead Finder", page_icon="🎯", layout="wide")
 _CITY = _city()
-
 DOT = {"pass": "🟢", "warn": "🟠", "fail": "🔴", "unknown": "⚪"}
 CONTACT_SOURCES = ["host's own website", "business listing (BBB / Google Business Profile)",
                     "OpenCorporates / county property records", "host_about or host profile text",
@@ -397,7 +395,7 @@ def export_tab():
                        file_name="leads_needing_contact_research.csv", mime="text/csv")
 
 
-def main():
+def render():
     if REDACT:
         _seed_demo_if_empty()
     sidebar()
@@ -411,4 +409,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import streamlit as st
+    st.set_page_config(page_title="STR Owner Lead Finder", page_icon="🎯", layout="wide")
+    render()
