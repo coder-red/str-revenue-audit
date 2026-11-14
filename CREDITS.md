@@ -90,9 +90,9 @@ revenue headline, manual contact-research fields + CSV export + found-rate stat,
 
 ## Our own code (not third-party)
 
-- `str_audit/` — Inside Airbnb field normalisation, comp-matching rules, (Phase 2)
-  audit signals: weak photos/description, review recency, price vs neighbourhood median,
-  revenue-gap estimate, and the audit-summary prompt. MIT.
-- `str_leads/` — host-level aggregation, the custom lead score, the pitch-drafting
-  prompt/assembly, and the SQLite dedupe/status store. MIT.
-- `leadfinder_app.py`, `scripts/score_leads.py` — review queue UI and pipeline driver. MIT.
+- `str_audit/` — Inside Airbnb field normalisation, comp-matching rules,
+  audit signals, revenue-gap estimate, audit-summary prompt.
+- `str_leads/` — host-level aggregation, lead score, pitch drafting, SQLite store.
+- `leadfinder_app.py`, `scripts/score_leads.py` — review queue UI and pipeline driver.
+
+All rights reserved — source visible on GitHub for inspection; ask before reuse.
