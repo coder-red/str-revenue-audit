@@ -148,14 +148,11 @@ def upsert_scored_leads(df: pd.DataFrame, db_path: str | Path = DEFAULT_DB,
     """Insert new hosts; refresh scoring fields for existing ones. Never touches
     status/contact/notes/pitch/audit. Returns {'inserted': n, 'updated': m}."""
     inserted = updated = 0
-    payload_cols = ["host_id", "host_name", "n_listings", "score", "total_modelled_revenue",
-                    "min_modelled_revenue", "median_price", "calculated_host_listings_count",
-                    "weakest_listing_id", "neighbourhoods", "host_url", "host_profile_url",
-                    "host_about", "reasons"]
+    required = ["host_id", "host_name", "n_listings", "score", "reasons"]
     with connect(db_path) as conn:
         for rec in df.itertuples(index=False):
             row = rec._asdict()
-            missing = [c for c in payload_cols if c not in row]
+            missing = [c for c in required if c not in row]
             if missing:
                 raise ValueError(f"scored dataframe is missing columns: {missing}")
             host_id = int(row["host_id"])
@@ -184,8 +181,8 @@ def upsert_scored_leads(df: pd.DataFrame, db_path: str | Path = DEFAULT_DB,
                      score_version, reasons, _num(row["total_modelled_revenue"]),
                      _num(row["min_modelled_revenue"]), _num(row["median_price"]),
                      _num(row["calculated_host_listings_count"]), _int_or_none(row["weakest_listing_id"]),
-                     neighbourhoods, _clean_str(row["host_url"]), _clean_str(row["host_profile_url"]),
-                     _clean_str(row["host_about"]), now, host_id),
+                     neighbourhoods, _clean_str(row.get("host_url")), _clean_str(row.get("host_profile_url")),
+                     _clean_str(row.get("host_about")), now, host_id),
                 )
                 updated += 1
             else:
@@ -199,8 +196,8 @@ def upsert_scored_leads(df: pd.DataFrame, db_path: str | Path = DEFAULT_DB,
                      score_version, reasons, _num(row["total_modelled_revenue"]),
                      _num(row["min_modelled_revenue"]), _num(row["median_price"]),
                      _num(row["calculated_host_listings_count"]), _int_or_none(row["weakest_listing_id"]),
-                     neighbourhoods, _clean_str(row["host_url"]), _clean_str(row["host_profile_url"]),
-                     _clean_str(row["host_about"]), now, now),
+                     neighbourhoods, _clean_str(row.get("host_url")), _clean_str(row.get("host_profile_url")),
+                     _clean_str(row.get("host_about")), now, now),
                 )
                 inserted += 1
     return {"inserted": inserted, "updated": updated}
@@ -287,10 +284,11 @@ def export_needing_research_csv(db_path: str | Path = DEFAULT_DB,
     writer = csv.DictWriter(buf, fieldnames=_NEED_RESEARCH_COLS, lineterminator="\n",
                             extrasaction="ignore")
     writer.writeheader()
-    for d in leads:
+    for i, d in enumerate(leads):
         row = {c: d.get(c) for c in _NEED_RESEARCH_COLS}
         if redact_names:
             row["host_name"] = redact_name(row["host_name"])
+            row["host_id"] = i + 1
         row["neighbourhoods"] = ", ".join(d.get("neighbourhoods") or [])
         row["reasons"] = " | ".join(d.get("reasons") or [])
         writer.writerow(row)
@@ -361,10 +359,11 @@ def export_csv(db_path: str | Path = DEFAULT_DB, statuses: list[str] | None = No
     writer = csv.DictWriter(buf, fieldnames=_EXPORT_COLS + ["reasons", "neighbourhoods"],
                             extrasaction="ignore", lineterminator="\n")
     writer.writeheader()
-    for d in leads:
+    for i, d in enumerate(leads):
         row = {c: d.get(c) for c in _EXPORT_COLS}
         if redact_names:
             row["host_name"] = redact_name(row["host_name"])
+            row["host_id"] = i + 1          # pseudonymous index, not the Airbnb host id
         row["reasons"] = " | ".join(d.get("reasons") or [])
         row["neighbourhoods"] = ", ".join(d.get("neighbourhoods") or [])
         writer.writerow(row)

@@ -340,9 +340,9 @@ def all_leads_tab():
         st.info("No leads yet — run `python scripts/score_leads.py`.")
         return
     rows = []
-    for d in leads:
+    for i, d in enumerate(leads):
         rows.append({
-            "host_id": d["host_id"], "host_name": _disp_name(d),
+            ("#" if REDACT else "host_id"): i + 1 if REDACT else d["host_id"], "host_name": _disp_name(d),
             "score": d["score"], "n_listings": d.get("n_listings"),
             "median_price": d.get("median_price"),
             "status": d["status"], "contact": d.get("contact_email"),

@@ -37,8 +37,7 @@ def main() -> int:
         lambda ns: json.dumps(list(ns), ensure_ascii=False))
     keep = ["host_id", "host_name", "n_listings", "score", "score_version", "reasons",
             "total_modelled_revenue", "min_modelled_revenue", "median_price",
-            "calculated_host_listings_count", "weakest_listing_id", "neighbourhoods",
-            "host_url", "host_profile_url", "host_about"]
+            "calculated_host_listings_count", "weakest_listing_id", "neighbourhoods"]
     ranked[keep].to_parquet(OUT, index=False)
     print(f"wrote {OUT}  ({OUT.stat().st_size / 1024:.0f} KB, {len(ranked)} rows, names redacted)")
     return 0
