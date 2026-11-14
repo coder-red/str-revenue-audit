@@ -1,4 +1,4 @@
-ï»¿# STR Listing Revenue Audit
+# STR Listing Revenue Audit
 Take one short-term rental listing in a metro, compare it to local listings from
 [Inside Airbnb](https://insideairbnb.com/) (free, public, CC BY 4.0), and produce
 a one-page PDF showing the estimated revenue gap and the top fixes.
@@ -8,16 +8,16 @@ Every revenue number in the report is labelled **ESTIMATE** with the calculation
 | Streamlit app | PDF one-pager |
 |---|---|
 | ![App](docs/screenshot-app.png) | ![PDF](docs/screenshot-pdf.png) |
-Sample output (anonymized â€” identity and exact location removed; a synthetic 2BR listing audited against the real Austin comp pool):
+Sample output (anonymized — identity and exact location removed; a synthetic 2BR listing audited against the real Austin comp pool):
 **[docs/sample_audit.pdf](docs/sample_audit.pdf)**
-â€” an active 2BR with 19 reviews, health 83/100, conservative upside range **+$1,768 â†’ +$11,146 per year**, every figure ESTIMATE-labelled with the math printed on the page.
+— an active 2BR with 19 reviews, health 83/100, conservative upside range **+$1,768 ? +$11,146 per year**, every figure ESTIMATE-labelled with the math printed on the page.
 The tool's job: show a property manager the gap and the top fixes, honestly labelled as estimates.
 ## Status
-- [x] Phase 0 â€” Research & reuse plan (approved 2026-11-11)
-- [x] Phase 1 â€” Pipeline: load one metro, build a comps table for a single listing
-- [x] Phase 2 â€” Audit signals + revenue-gap estimate + LLM summary (Gemini/Groq free tier, offline fallback)
-- [x] Phase 3 â€” One-page PDF (xhtml2pdf) + Streamlit app (look up / enter / upload a listing, download PDF)
-- [x] Phase 4 â€” STR Owner Lead Finder: host-level lead scoring â†’ audits on weakest listings â†’ LLM pitch drafts â†’ review queue + CSV export (see below)
+- [x] Phase 0 — Research & reuse plan (approved 2026-11-11)
+- [x] Phase 1 — Pipeline: load one metro, build a comps table for a single listing
+- [x] Phase 2 — Audit signals + revenue-gap estimate + LLM summary (Gemini/Groq free tier, offline fallback)
+- [x] Phase 3 — One-page PDF (xhtml2pdf) + Streamlit app (look up / enter / upload a listing, download PDF)
+- [x] Phase 4 — STR Owner Lead Finder: host-level lead scoring ? audits on weakest listings ? LLM pitch drafts ? review queue + CSV export (see below)
 ## Data source & attribution
 Inside Airbnb, "Austin, Texas, United States" snapshot dated **2026-09-17**,
 licensed CC BY 4.0. If you use this project's outputs, credit **Inside Airbnb**
@@ -38,12 +38,12 @@ STR_CITY=fort-worth python -m str_audit.audit --city fort-worth --listing-id 174
 streamlit run app.py                                     # STR_CITY=dallas streamlit run app.py
 ```
 Data dir layout: `data/<slug>-<snapshot>/listings.csv.gz`. Only the Austin file is
-committed (hosted deploys work out of the box); other metros are gitignored â€” fetch them
+committed (hosted deploys work out of the box); other metros are gitignored — fetch them
 with the command above. Attribution name flows through from the registry (Dallas audit
-reads "Inside Airbnb â€” Dallas, TX, snapshot 2026-09-19").
-Known metros (snapshot dates from Inside Airbnb, 14 Sepâ€“25 Sep 2026): **Austin** (2026-09-17),
+reads "Inside Airbnb — Dallas, TX, snapshot 2026-09-19").
+Known metros (snapshot dates from Inside Airbnb, 14 Sep–25 Sep 2026): **Austin** (2026-09-17),
 **Dallas** (2026-09-19), **Fort Worth** (2026-09-17). Add a city by appending to `CITIES` in
-`str_audit/cities.py` â€” no other file needs editing. Inside Airbnb publishes no current
+`str_audit/cities.py` — no other file needs editing. Inside Airbnb publishes no current
 Houston or San Antonio snapshot, so those two metros can't be offered.
 ## Setup
 ```bash
@@ -53,7 +53,7 @@ python scripts/download_data.py                    # fetches Austin 2026-09-17 i
 # or pick a metro explicitly:
 STR_CITY=dallas python scripts/download_data.py    # listings.csv.gz only (add --full for ~70MB)
 ```
-## Phase 1 â€” comps table for one listing
+## Phase 1 — comps table for one listing
 ```bash
 # comps for a specific listing id, written to outputs/
 python -m str_audit.comps --listing-id 12345678 --k 12
@@ -61,21 +61,21 @@ python -m str_audit.comps --listing-id 12345678 --k 12
 python -m str_audit.comps --demo
 ```
 `str_audit.comps` prints the table to stdout and writes `outputs/comps.csv`.
-## Phase 2 â€” audit + revenue gap + summary
+## Phase 2 — audit + revenue gap + summary
 ```bash
 python -m str_audit.audit --listing-id 21004527   # full audit, prints report + writes outputs/audit_<id>.json
 ```
 Signals (all our own logic, thresholds in `str_audit/signals.py`):
-weak photos (user-entered count only; public data has none â†’ reported `unknown`),
+weak photos (user-entered count only; public data has none ? reported `unknown`),
 thin description (<60 words), review recency (stale after 180 days; 0 reviews = fail),
 price vs comp median (>10% off = flag).
-Both revenue numbers â€” **always labeled ESTIMATES with formulas printed**, and the headline
-is now a **conservative range** (A â†’ B), never a single figure:
-- **A, price positioning:** `(comp_median_price âˆ’ target_price) Ã— comp_avg_occupancy Ã— 365`
-- **B, Inside Airbnb model:** `median(comp estimated_revenue_l365d, active comps only) âˆ’ target's`
+Both revenue numbers — **always labeled ESTIMATES with formulas printed**, and the headline
+is now a **conservative range** (A ? B), never a single figure:
+- **A, price positioning:** `(comp_median_price - target_price) × comp_avg_occupancy × 365`
+- **B, Inside Airbnb model:** `median(comp estimated_revenue_l365d, active comps only) - target's`
 - If comps are too thin (**n < 8**) or too dissimilar (stdev/median of comp prices **> 0.6**), the
   report and the pitch drafts say **INSUFFICIENT DATA** and quote nothing.
-### LLM summary (optional â€” works without keys)
+### LLM summary (optional — works without keys)
 The summary runs through Gemini or Groq free tier, selected at runtime:
 ```bash
 cp .env.example .env      # Windows: copy .env.example .env
@@ -83,7 +83,7 @@ cp .env.example .env      # Windows: copy .env.example .env
 python -m str_audit.audit --listing-id 21004527 --provider gemini
 ```
 With no keys (or `--provider none`), a deterministic fallback summary is produced
-from the audit dict â€” no invented numbers, works offline. Prompt lives in
+from the audit dict — no invented numbers, works offline. Prompt lives in
 `str_audit/audit_prompt.py`; every call is wrapped so any API failure degrades
 to the fallback instead of crashing.
 
@@ -91,29 +91,29 @@ to the fallback instead of crashing.
 
 From the same Inside Airbnb Austin snapshot, find the hosts who likely need a property
 manager, audit their weakest listing, draft a personalized outreach email, and queue
-it for **your** review. There is **no send button anywhere** â€” output is an approval
+it for **your** review. There is **no send button anywhere** — output is an approval
 queue and a CSV you send from your own mailbox.
-Flow: `score â†’ audit weakest listing â†’ draft pitch â†’ review â†’ approve â†’ export CSV`
+Flow: `score ? audit weakest listing ? draft pitch ? review ? approve ? export CSV`
 ```bash
 python scripts/score_leads.py                # Phase 1: score all hosts (upserts into data/leads.db)
 python scripts/score_leads.py --audit 10     # Phase 2: audit weakest listing of top 10
 python scripts/score_leads.py --pitch 10     # Phase 3: draft pitches for those 10
-streamlit run app.py                         # Phase 4: the whole thing â€” Revenue audit + Owner lead finder
+streamlit run app.py                         # Phase 4: the whole thing — Revenue audit + Owner lead finder
 streamlit run app.py --server.port 8516      # ?mode=audit (default) | ?mode=leads
 ```
 **One app, two modes** (`app.py`): the audit mode is the client-facing Revenue Audit; the
 `?mode=leads` lane is the Owner Lead Finder review queue. `LANDING_MODE=leads` flips the
 default; slim nav bar top-right switches without leaving the shell. Both modes share the same
-code, the same `STR_CITY` switch, and the same attribution â€” one codebase, one app, with a
+code, the same `STR_CITY` switch, and the same attribution — one codebase, one app, with a
 thin shim (`leadfinder_app.py`) so the str-lead-finder Render service executes the same unified app.
 - **Lead score** (`str_leads/score.py`, custom, v2.0, max 16): transparent weighted points,
-  tuned toward small self-managing owners (roughly 1â€“4 listings) with weak listings â€”
-  stale/missing reviews (+3), price â‰¥10% below the neighbourhood median (+3), thin description
-  (+2), bottom-tercile modelled revenue (+2), portfolio of 2 (+2, plus +1 for the 3â€“4 sweet
+  tuned toward small self-managing owners (roughly 1–4 listings) with weak listings —
+  stale/missing reviews (+3), price =10% below the neighbourhood median (+3), thin description
+  (+2), bottom-tercile modelled revenue (+2), portfolio of 2 (+2, plus +1 for the 3–4 sweet
   spot, capped at 5+), not a superhost (+1). Reasons are stored per lead and shown in the UI.
-  Likely agencies (calculated metro-wide listings â‰¥ 5 â€” configurable with `--agency-cutoff`,
+  Likely agencies (calculated metro-wide listings = 5 — configurable with `--agency-cutoff`,
   or company-like name tokens) are excluded; `--include-agencies` overrides.
-  **Note:** re-scoring does not happen silently â€” run `python scripts/score_leads.py` yourself
+  **Note:** re-scoring does not happen silently — run `python scripts/score_leads.py` yourself
   to refresh the DB (it upserts scores only; statuses/contacts/notes are preserved).
 - **Audits** (`str_leads/audit_bridge.py`): reuses `str_audit.audit.run_audit` untouched on each
   lead's weakest listing; the audit JSON path + ESTIMATE gaps are linked from the leads DB.
@@ -123,7 +123,7 @@ thin shim (`leadfinder_app.py`) so the str-lead-finder Render service executes t
   ESTIMATE figures, labeled as such. Offline deterministic fallback when no LLM key.
 - **Store** (`str_leads/store.py`): SQLite (`data/leads.db`, gitignored). `host_id` is the
   dedupe key; re-running the scorer refreshes scores, never your statuses/notes/contacts.
-  Status flow: `new â†’ approved | rejected â†’ sent â†’ replied â†’ meeting`, plus
+  Status flow: `new ? approved | rejected ? sent ? replied ? meeting`, plus
   `no_contact` and `do_not_contact`.
 - **Contact discovery is manual and public-info only**: the app captures the source URL of
   whatever you find (host website, business listing, county records). If no public contact
@@ -133,33 +133,32 @@ thin shim (`leadfinder_app.py`) so the str-lead-finder Render service executes t
   Export tab offers a **Leads needing contact research** CSV of unresearched, active leads.
 - **CAN-SPAM**: drafts are flagged **not sendable** until `SENDER_NAME`, `SENDER_BUSINESS`
   and `SENDER_POSTAL_ADDRESS` are set in `.env` (every commercial email needs sender
-  identity + a physical postal address + a working opt-out line â€” all are enforced by the
+  identity + a physical postal address + a working opt-out line — all are enforced by the
   review UI and flagged in the CSV export).
-- **Hosted demo:** <https://str-lead-finder.onrender.com> â€” same app, but the instance runs
+- **Hosted demo:** <https://str-lead-finder.onrender.com> — same app, but the instance runs
   with `LEADFINDER_REDACT_NAMES=1`: every host renders as initials (e.g. `S. N.`) in the
   queue, tables and both CSV exports, and the seeded DB contains only public Austin snapshot
   fields (regenerated by `scripts/build_lead_seed.py`). No real owner is identifiable from the
   demo. Local `streamlit run leadfinder_app.py` shows full names.
 Snapshot note: the Austin 2026-09-17 file ships `host_since` and `host_response_rate` as
-100% NULL (Inside Airbnb removed them) â€” those two weights never fire on this data.
+100% NULL (Inside Airbnb removed them) — those two weights never fire on this data.
 
 ## Automation (opt-in)
 
 Two pieces, both free:
 
-1. **Quarterly Inside Airbnb refresh** â€” `.github/workflows/refresh-leads.yml` runs
+1. **Quarterly Inside Airbnb refresh** — `.github/workflows/refresh-leads.yml` runs
    `scripts/build_lead_seed.py` every 3 months on GitHub's free runners and commits the
    fresh redacted seed back to `data/lead_seed.parquet`. The hosted demo re-seeds itself
-   on cold start. No keys, no bill â€” works without a human in the loop.
+   on cold start. No keys, no bill — works without a human in the loop.
 
-2. **Best-effort public contact discovery** â€” `scripts/score_leads.py --find-contacts N`
-   (default **off**; `--find-contacts 0` is a no-op) queries **Brave Search API** for each
+2. **Best-effort public contact discovery** — `scripts/score_leads.py --find-contacts N`
+   (default **off**; `--find-contacts 0` is a no-op) queries a public search API for each
    target host, requires the host's first name to appear on the page AND an explicit
    `mailto:addr` (never guessed, never uses `firstname@domain` permutations). Hit rates
    are low on Inside Airbnb's first-name-only profiles. You supply your own
-   `BRAVE_API_KEY` in `.env` (sign up free, $5/mo credits included, ~1,000 searches
-   free/month â€” covers the top 10 leads many times over). Every candidate writes
-   `contact_source=brave_search` so you know what was auto-found vs human-researched.
+   `TAVILY_API_KEY` in `.env` (sign up free at https://app.tavily.com/home — 1,000 credits/mo, no card; or `BRAVE_API_KEY` for the Brave endpoint). Every candidate writes
+   `contact_source=tavily_search|brave_search` so you know what was auto-found vs human-researched.
 
 Security gates stay exactly the same: every hit lands in the queue as a raw finding, only
 **approved** leads export, and the CAN-SPAM check blocks send-ready status until real sender
@@ -171,9 +170,9 @@ python scripts/score_leads.py --city austin --audit 10 --pitch 10 --find-contact
 ```
 
 ## Deploy
-**Live:** app â€” <https://str-revenue-audit.onrender.com> Â· landing page â€” <https://str-revenue-audit-site.onrender.com>
+**Live:** app — <https://str-revenue-audit.onrender.com> · landing page — <https://str-revenue-audit-site.onrender.com>
 (free Render tier; auto-deploy from `main`). Steps for other hosts: **[docs/deploy.md](docs/deploy.md)**.
-## Phase 3 â€” one-page PDF + Streamlit app
+## Phase 3 — one-page PDF + Streamlit app
 ```bash
 # generate the PDF from the CLI (no Streamlit needed)
 python -m str_audit.report --listing-id 21004527
@@ -182,19 +181,19 @@ python -m str_audit.report --listing-id 21004527
 streamlit run app.py
 ```
 The app has three entry points: **Inside Airbnb listing** (by id, e.g. the curated
-`21004527`), **Enter manually** (feeds the photo-count signal â€” public data has none),
+`21004527`), **Enter manually** (feeds the photo-count signal — public data has none),
 and **Upload CSV/JSON** (same fields as the manual form; sample template downloadable in-app).
 ### What's on the page (and why a PM reads it)
-- **Verdict headline** â€” the conservative ESTIMATE range (price-positioning gap A â†’ Inside Airbnb model gap B), or an explicit **INSUFFICIENT DATA** callout when the comp set is too thin/dissimilar. Never a bare number.
-- **Listing Health Score** â€” 0â€“100 composite of the four signals with the deduction formula printed (e.g. `70 â€” Solid but leaky; âˆ’25 review recency, âˆ’5 photos (unknown)`).
+- **Verdict headline** — the conservative ESTIMATE range (price-positioning gap A ? Inside Airbnb model gap B), or an explicit **INSUFFICIENT DATA** callout when the comp set is too thin/dissimilar. Never a bare number.
+- **Listing Health Score** — 0–100 composite of the four signals with the deduction formula printed (e.g. `70 — Solid but leaky; -25 review recency, -5 photos (unknown)`).
 - **Two ESTIMATE cards** (formulas printed) + comp occupancy / median / count chips + a P25/median/P75 price chart vs this listing.
-- **Signals â†’ ranked fixes**, an LLM-written summary in plain English, the comps table, and the full calculation method in fine print.
+- **Signals ? ranked fixes**, an LLM-written summary in plain English, the comps table, and the full calculation method in fine print.
 ### Branding / white-label
-Set **`CLIENT_BRAND`** in the environment (Render â†’ service â†’ Environment, or locally) to stamp your client's brand on the masthead:
+Set **`CLIENT_BRAND`** in the environment (Render ? service ? Environment, or locally) to stamp your client's brand on the masthead:
     CLIENT_BRAND="Acme Property Group" python -m str_audit.report --listing-id 21004527
-Masthead becomes "ACME PROPERTY GROUP Â· POWERED BY STR REVENUE AUDIT" â€” your client's name on every page you hand over, our method credit in the footer. To rename the product default itself: `templates/audit_report.html` (`.wordmark`), `app.py`, `.streamlit/config.toml`. Palette: deep green `#0d3b31`, bone `#f4f1ea`, amber `#d97706`.
+Masthead becomes "ACME PROPERTY GROUP · POWERED BY STR REVENUE AUDIT" — your client's name on every page you hand over, our method credit in the footer. To rename the product default itself: `templates/audit_report.html` (`.wordmark`), `app.py`, `.streamlit/config.toml`. Palette: deep green `#0d3b31`, bone `#f4f1ea`, amber `#d97706`.
 ### PDF engine note
-WeasyPrint (Phase 0 pick) needs GTK/Pango system libraries this Windows machine lacks â€”
+WeasyPrint (Phase 0 pick) needs GTK/Pango system libraries this Windows machine lacks —
 no winget/package manager available either. **xhtml2pdf** (pre-approved fallback, Apache-2.0)
 is used instead; the Jinja2 template is table-based CSS written to port back to WeasyPrint
 on Linux/macOS unchanged. See `CREDITS.md`.
@@ -207,31 +206,31 @@ on Linux/macOS unchanged. See `CREDITS.md`.
 | `.env.example` | Template for Phase 2 LLM keys (Gemini/Groq). Real values live in `.env`, never committed. |
 | `requirements.txt` | Minimal pinned-ish deps. Phase 1: pandas, duckdb, scikit-learn. |
 | `scripts/download_data.py` | Fetches the Austin 2026-09-17 Inside Airbnb files into `data/` (idempotent, stdlib only). |
-| `app.py` | Unified shell: mode dispatch (Revenue audit â†” Owner lead finder), slim brand bar, `LANDING_MODE` default, `?mode=` deep links. |
-| `audit_ui.py` | The audit UI, wrapped as `render()` â€” imported by `app.py`'s audit mode. |
-| `leads_ui.py` | The Owner Lead Finder review queue, wrapped as `render()` â€” imported by `app.py`'s leads mode. |
-| `leadfinder_app.py` | 12-line shim: sets `LANDING_MODE=leads` and runs `app.py` â€” exactly what Render's str-lead-finder service executes. |
+| `app.py` | Unified shell: mode dispatch (Revenue audit ? Owner lead finder), slim brand bar, `LANDING_MODE` default, `?mode=` deep links. |
+| `audit_ui.py` | The audit UI, wrapped as `render()` — imported by `app.py`'s audit mode. |
+| `leads_ui.py` | The Owner Lead Finder review queue, wrapped as `render()` — imported by `app.py`'s leads mode. |
+| `leadfinder_app.py` | 12-line shim: sets `LANDING_MODE=leads` and runs `app.py` — exactly what Render's str-lead-finder service executes. |
 | `templates/audit_report.html` | The one-page PDF: Jinja2 + table CSS (xhtml2pdf-safe). All ESTIMATE labels, method and attribution render from data; branding is here (`.band-title`). |
-| `str_audit/report.py` | Audit dict â†’ styled HTML â†’ PDF bytes. Owns the Plotlyâ†’kaleido chart (PNG base64; silently omitted if kaleido can't run) and the Jinja view model. |
-| `assets/fonts/` | DejaVu TTFs embedded in the PDF (Bitstream Vera license â€” see `assets/fonts/README.txt`). |
+| `str_audit/report.py` | Audit dict ? styled HTML ? PDF bytes. Owns the Plotly?kaleido chart (PNG base64; silently omitted if kaleido can't run) and the Jinja view model. |
+| `assets/fonts/` | DejaVu TTFs embedded in the PDF (Bitstream Vera license — see `assets/fonts/README.txt`). |
 | `.streamlit/config.toml` | App theme: deep green primary, warm off-white background, no usage stats. |
 | `requirements-dev.txt` | Dev tools only: pytest, pypdf, pypdfium2. |
 | `str_audit/__init__.py` | Package marker + version. |
-| `str_audit/data.py` | Loads `listings.csv.gz`, normalises the messy fields (`$1,234` â†’ float, `bathrooms_text` â†’ number, t/f â†’ bool). All Inside Airbnb weirdness is handled here, once. |
+| `str_audit/data.py` | Loads `listings.csv.gz`, normalises the messy fields (`$1,234` ? float, `bathrooms_text` ? number, t/f ? bool). All Inside Airbnb weirdness is handled here, once. |
 | `str_audit/comps.py` | Builds the comps table for one listing: same room type, bed-band, neighbourhood (falls back to radius), then k-nearest on scaled [price, beds, bedrooms, baths]. |
 | `str_audit/signals.py` | Our audit logic: photo/description/review-recency/price-vs-comps signals with thresholds as named constants; ranks top fixes by severity. |
 | `str_audit/revenue.py` | The two ESTIMATE figures (price-positioning gap; Inside Airbnb model gap over active comps) with formulas and caveats returned alongside. |
-| `str_audit/audit_prompt.py` | The audit-summary prompt â€” ours. Non-technical tone, no invented numbers, ESTIMATE language baked in. |
+| `str_audit/audit_prompt.py` | The audit-summary prompt — ours. Non-technical tone, no invented numbers, ESTIMATE language baked in. |
 | `str_audit/llm.py` | Thin Gemini/Groq wrapper (free tiers, keys from `.env`). Any failure degrades to a deterministic plain-text fallback built from the same audit dict. |
-| `str_audit/audit.py` | Phase 2 orchestrator: listing â†’ comps â†’ signals â†’ estimate â†’ summary; prints the report and writes `outputs/audit_<id>.json`. (Phase 3 renders the same dict to PDF.) |
-| `tests/` | pytest smoke tests on synthetic data â€” no network. `python -m pytest tests/ -v` |
+| `str_audit/audit.py` | Phase 2 orchestrator: listing ? comps ? signals ? estimate ? summary; prints the report and writes `outputs/audit_<id>.json`. (Phase 3 renders the same dict to PDF.) |
+| `tests/` | pytest smoke tests on synthetic data — no network. `python -m pytest tests/ -v` |
 | `outputs/` | Generated artefacts (gitignored). |
-| `scripts/score_leads.py` | Lead-finder pipeline driver (Phases 1â€“3): score â†’ upsert â†’ audit top-N â†’ draft pitches. Read-only over the snapshot; writes `data/leads.db`. |
-| `str_leads/data.py` | Host-level aggregation from the raw snapshot via DuckDB (host_id â€¦ host_url), joined onto `str_audit.data.load_listings` facts. Project 1 loader untouched. |
+| `scripts/score_leads.py` | Lead-finder pipeline driver (Phases 1–3): score ? upsert ? audit top-N ? draft pitches. Read-only over the snapshot; writes `data/leads.db`. |
+| `str_leads/data.py` | Host-level aggregation from the raw snapshot via DuckDB (host_id … host_url), joined onto `str_audit.data.load_listings` facts. Project 1 loader untouched. |
 | `str_leads/score.py` | The custom lead score (rule 7): weighted points + human-readable reasons, agency exclusion, v1.0. |
 | `str_leads/audit_bridge.py` | Audits each lead's weakest listing via `str_audit.audit.run_audit` (untouched); writes `outputs/audit_<id>.json`; links it in `leads.db`. |
 | `str_leads/pitch.py` | The custom pitch prompt + Jinja-free assembly: deterministic subject, LLM body (allow-listed brief), sender block + opt-out appended in code, `can_spam_ok()` gate. |
-| `str_leads/store.py` | SQLite dedupe/status tracking (rule 7) â€” `host_id` PK; refresh-score-only upserts; CSV export. |
+| `str_leads/store.py` | SQLite dedupe/status tracking (rule 7) — `host_id` PK; refresh-score-only upserts; CSV export. |
 | `docs/phase0-lead-finder.md` | Phase 0 research: library options per category, licenses, contact-discovery limits. |
 ## License
 This project's own code: all rights reserved (source visible for inspection; ask before reuse). Data: Inside Airbnb, CC BY 4.0 (attribution required).

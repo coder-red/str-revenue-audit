@@ -53,7 +53,8 @@ def main() -> int:
     ap.add_argument("--provider", choices=["gemini", "groq", "none"], default=None,
                     help="LLM provider (default: LLM_PROVIDER from .env; 'none' = offline fallback)")
     ap.add_argument("--find-contacts", type=int, default=0, metavar="N",
-                    help="public-contact discovery for the top N leads only (Brave API; needs BRAVE_API_KEY in .env). NEVER runs by default.")
+                    help="public-contact discovery for the top N leads only (needs TAVILY_API_KEY, "
+                         "free 1k credits/mo, or BRAVE_API_KEY). NEVER runs by default; never guessed.")
     ap.add_argument("--force-audit", action="store_true",
                     help="re-audit hosts that already have an audit on file")
     ap.add_argument("--pitch", type=int, default=0, metavar="N",
@@ -117,37 +118,45 @@ def main() -> int:
                 print(f"  host {r['host_id']}: FAILED — {r.get('error')}")
 
     if args.find_contacts > 0:
-        brave_key = None
         try:
             from dotenv import load_dotenv
             load_dotenv()
             import os as _os
-            brave_key = _os.environ.get("BRAVE_API_KEY", "").strip() or None
         except ImportError:
-            pass
-        if not brave_key:
-            print("\n--find-contacts: BRAVE_API_KEY not set in .env — skipping contact search. "
-                  "Sign up at https://api-dashboard.search.brave.com/register (free tier, $5/mo included).")
+            _os = __import__("os")
+        provider = str(_os.environ.get("SEARCH_PROVIDER", "tavily")).strip().lower()
+        provider = provider if provider in ("tavily", "brave") else "tavily"
+        tavily_key = (_os.environ.get("TAVILY_API_KEY", "") or "").strip() or None
+        brave_key = (_os.environ.get("BRAVE_API_KEY", "") or "").strip() or None
+        if provider == "tavily":
+            key, env_name, url = tavily_key, "TAVILY_API_KEY", "https://app.tavily.com/home"
+        else:
+            key, env_name, url = brave_key, "BRAVE_API_KEY", "https://api-dashboard.search.brave.com/register"
+        if not key:
+            print(f"\n--find-contacts: {env_name} not set in .env — skipping contact search. "
+                  f"Sign up free: {url}  (~1,000 queries/month, no card).")
         else:
             from str_audit.cities import label as _city_label
             city = _city_label(slug)
             targets = ranked.head(args.find_contacts).to_dict("records")
-            print(f"\nPublic-contact discovery for top {args.find_contacts} hosts ({city}, Brave web)…")
+            print(f"\nPublic-contact discovery for top {args.find_contacts} hosts ({city}, {provider} web)…")
             print("Note: hit rates are low on Inside Airbnb names (display names, no domain). "
-                  "Emails are ONLY accepted when name matches the page AND a mailto: exists — never guessed.")
+                  "Emails are ONLY accepted when the lead's first name appears on the page AND a mailto: "
+                  "or visible email appears — never guessed.")
             for r in targets:
                 host = r["host_name"]
-                hits = contact_finder.find_for_lead(host, city, brave_key, max_results=10)
+                hits = contact_finder.find_for_lead(host, city, key, provider=provider,
+                                                    max_results=10)
                 if hits:
                     top = hits[0]
                     store.update_lead(int(r["host_id"]), args.db,
-                                      contact_email=top.email,
-                                      contact_url=top.url,
+                                      contact_email=top.email or None,
+                                      contact_url=top.url or None,
                                       contact_source=top.source,
                                       contact_found="yes",
                                       contact_found_on=__import__("datetime").date.today().isoformat(),
-                                      notes=f"auto: evidence {top.evidence_score} | query: {top.query}")
-                    print(f"  host {r['host_id']} ({host!r}): {top.email}  via {top.url[:80]}")
+                                      notes=f"auto: evidence {top.evidence_score} | via {top.source} | {top.query}")
+                    print(f"  host {r['host_id']} ({host!r}): {top.email or '(no email in snippets)'}  via {top.url[:80]}")
                 else:
                     store.update_lead(int(r["host_id"]), args.db,
                                       contact_found="not_found",

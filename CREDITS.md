@@ -1,4 +1,4 @@
-# CREDITS — third-party code, data & what we took
+﻿# CREDITS — third-party code, data & what we took
 
 Rule: only MIT / Apache-2.0 / BSD-licensed material is reused. Anything GPL,
 LGPL, unlicensed, or "license unclear" was **not** reused — see the bottom section.
@@ -102,5 +102,5 @@ All rights reserved — source visible on GitHub for inspection; ask before reus
 
 | Service | Terms / pricing | Use |
 |---|---|---|
-| **Brave Search API** | Free tier; $5/mo credit included (~1,000 queries/mo) | Only used by `scripts/score_leads.py --find-contacts N`. `BRAVE_API_KEY` lives in `.env`; never committed; never runs by default. Candidates are **name-matched** to the page and require an explicit `mailto:` — never guessed. |
+| **Tavily** (default) / **Brave Search API** | Free tiers: Tavily 1,000 credits/mo (no card); Brave $5/mo credit (~1,000 searches) | Used only by `scripts/score_leads.py --find-contacts N`. `TAVILY_API_KEY` (default) or `BRAVE_API_KEY` live in `.env`; never committed; never runs by default. Candidates are **name-matched** and require an explicit `mailto:` or visible email - never guessed. |
 | **GitHub Actions** (actions/checkout, actions/setup-python) | MIT | `.github/workflows/refresh-leads.yml` runs quarterly on GitHub's free runners to refresh `data/lead_seed.parquet`. |
